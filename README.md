@@ -91,3 +91,18 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 
 Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
 Game rules (2 children, 12 h window, distances, privacy grid) are in `backend/src/main/resources/application.yml`.
+
+## Business Bubble Growth
+
+Each business hub reports `diameterUnits` - a logical bubble size derived from
+`visitors`, the lifetime count of unique device IDs that checked in there
+(approximates people, but devices are not guaranteed to be individuals; repeat
+scans by the same device don't grow the bubble). It is additive on
+`GET /api/businesses` and on the nested `business` in checkin responses; the
+frontend maps units to pixels.
+
+- `visitors <= 500`: `diameter = 1 + visitors/100` (1.0 at 0, 6.0 at 500)
+- Above 500 the slope halves every bracket: widths double (500, 1000, 2000, ...)
+  and each adds +2.5 diameter - 500=6, 1000=8.5, 2000=11, 4000=13.5
+
+See `backend/src/main/java/ca/kindredlink/business/BusinessBubbleSize.java`.

@@ -69,7 +69,8 @@ public class BusinessService {
     }
 
     private static BusinessHub toHub(Business b, CheckinRepository.BusinessCounts c) {
+        long visitors = c == null ? 0 : c.getVisitors();
         return new BusinessHub(b.getId(), b.getName(), b.getLogoUrl(), b.getLat(), b.getLng(),
-                c == null ? 0 : c.getVisitors(), c == null ? 0 : c.getKindnessActs());
+                visitors, c == null ? 0 : c.getKindnessActs(), BusinessBubbleSize.diameterUnits(visitors));
     }
 }
