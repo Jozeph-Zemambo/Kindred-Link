@@ -1,5 +1,18 @@
 package ca.kindredlink.chain;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import ca.kindredlink.KindredProperties;
 import ca.kindredlink.chain.ChainDtos.ChainNode;
 import ca.kindredlink.chain.ChainDtos.ChainStats;
@@ -10,17 +23,6 @@ import ca.kindredlink.geo.Geo;
 import ca.kindredlink.node.KindnessNode;
 import ca.kindredlink.node.NodeRepository;
 import ca.kindredlink.node.NodeRules;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
