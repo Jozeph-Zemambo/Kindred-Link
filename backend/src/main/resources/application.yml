@@ -32,7 +32,7 @@ kindred:
     open-hours: 12
   continue-rules:
     # How close (metres) you must be to the parent's real location to continue it.
-    max-distance-meters: 1000
+    max-distance-meters: 2000
   chain:
     # A chain with open slots but no new link for this long is "Quiet" instead of "Active".
     quiet-after-hours: 3
