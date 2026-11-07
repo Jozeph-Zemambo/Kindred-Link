@@ -1,0 +1,12 @@
+# Run with SPRING_PROFILES_ACTIVE=postgres for a persistent database (e.g. a deployed demo).
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/kindred}
+    username: ${DATABASE_USER:kindred}
+    password: ${DATABASE_PASSWORD:kindred}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: false

@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: kindredlink
+  datasource:
+    # In-memory dev DB: wiped on every restart, re-seeded by DemoData.
+    url: jdbc:h2:mem:kindred;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  mvc:
+    # Errors come back as {"status":409,"title":"slot_closed","detail":"..."} (see ApiException).
+    problemdetails:
+      enabled: true
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /docs
+
+# Game rules. Tune here, not in code.
+kindred:
+  node:
+    max-children: 2
+    open-hours: 12
+  continue-rules:
+    # How close (metres) you must be to the parent's real location to continue it.
+    max-distance-meters: 1000
+  chain:
+    # A chain with open slots but no new link for this long is "Quiet" instead of "Active".
+    quiet-after-hours: 3
+  privacy:
+    # Public pins are snapped to a grid of this size, then jittered inside the cell.
+    grid-meters: 250
+  business:
+    max-checkin-distance-meters: 150
+  seed-demo-data: true
