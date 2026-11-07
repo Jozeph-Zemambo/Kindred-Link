@@ -2,20 +2,20 @@ spring:
   application:
     name: kindredlink
   datasource:
-    # In-memory dev DB: wiped on every restart, re-seeded by DemoData.
-    url: jdbc:h2:mem:kindred;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
+    # Local demo defaults: MySQL via `docker compose up -d db` (see compose.yaml).
+    # Demo-only credentials - never reuse outside local development.
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/kindred}
+    username: ${DATABASE_USER:kindred}
+    password: ${DATABASE_PASSWORD:kindred_demo}
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      # Demo convenience only: lets the schema evolve without migrations.
+      # Not a substitute for managed migrations (e.g. Flyway) in production.
+      ddl-auto: update
     open-in-view: false
   mvc:
     # Errors come back as {"status":409,"title":"slot_closed","detail":"..."} (see ApiException).
     problemdetails:
-      enabled: true
-  h2:
-    console:
       enabled: true
 
 server:
