@@ -9,9 +9,13 @@ import jakarta.validation.constraints.NotNull;
 public final class BusinessDtos {
     private BusinessDtos() {}
 
-    /** The bubble on the map: logo plus how many visited and how many did a kindness there. */
+    /**
+     * The bubble on the map: logo plus how many visited and how many did a kindness there.
+     * diameterUnits is a logical bubble diameter (see BusinessBubbleSize) - the frontend
+     * maps units to pixels, it is not a pixel or inch value.
+     */
     public record BusinessHub(Long id, String name, String logoUrl, double lat, double lng,
-            long visitors, long kindnessActs) {}
+            long visitors, long kindnessActs, double diameterUnits) {}
 
     /** token comes from the scanned till QR; lat/lng is the device's GPS fix; nodeId links an act. */
     public record CheckinRequest(
