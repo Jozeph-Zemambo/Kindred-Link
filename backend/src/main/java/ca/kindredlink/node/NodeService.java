@@ -103,7 +103,7 @@ public class NodeService {
      *    posts is never handed to someone else.
      *  - The moment you claim, you get 12 h (finishHours) to post your act, capped at the chain's end.
      *
-     * Checks run in this order: chain still open, own node, already claimed, slots left, distance.
+     * Checks run in this order: chain still open, own node, already claimed, and slots left.
      */
     @Transactional
     public ClaimResponse claim(Long parentId, ClaimRequest req, String deviceId) {
@@ -134,7 +134,8 @@ public class NodeService {
         if (used >= props.node().maxChildren()) {
             throw new ApiException(HttpStatus.CONFLICT, "slot_closed", "No slots left on this node");
         }
-        // Rule: be physically near the node. Uses the real GPS fix, never shown to other users.
+        // Claiming is limited to the visible map radius. Once claimed, the person may leave this
+        // area and post their act elsewhere during their 12-hour window.
         double distance = Geo.distanceMeters(parent.getLat(), parent.getLng(), req.lat(), req.lng());
         double max = props.continueRules().maxDistanceMeters();
         if (distance > max) {
@@ -181,14 +182,6 @@ public class NodeService {
         if (!now.isBefore(deadline)) {
             throw new ApiException(HttpStatus.CONFLICT, "claim_expired",
                     "Your " + props.node().finishHours() + " h to finish ran out, so this slot is closed");
-        }
-
-        // Still be near the node when you post, not just when you claimed.
-        double distance = Geo.distanceMeters(parent.getLat(), parent.getLng(), req.lat(), req.lng());
-        double max = props.continueRules().maxDistanceMeters();
-        if (distance > max) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "too_far",
-                    "You need to be within " + (int) max + " m of this node to post");
         }
 
         // All good: save the new node, then note on the claim that it's finished.

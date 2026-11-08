@@ -21,7 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Tests the claim rules: 2 slots per node, one claim per person, no claiming your own node,
- * must be nearby, and a node stays claimable until its chain ends (not for a fixed 12 h).
+ * must be nearby to claim, and a node stays claimable until its chain ends (not for a fixed 12 h).
  * Every test creates its own parent node, so the tests don't interfere with each other.
  */
 @SpringBootTest
@@ -58,7 +58,7 @@ class NodeClaimTest {
         return new ClaimRequest(LAT + 0.0002, LNG + 0.0002);
     }
 
-    /** Runs a claim that should fail, and returns its error code (e.g. "too_far"). */
+    /** Runs a claim that should fail, and returns its error code. */
     private String claimError(Long parentId, ClaimRequest req, String deviceId) {
         ApiException error = assertThrows(ApiException.class, () -> service.claim(parentId, req, deviceId));
         return error.getBody().getTitle();
@@ -103,7 +103,7 @@ class NodeClaimTest {
     void cannotClaimFromFarAway() {
         NodeDetail parent = newParent();
 
-        // ~17 km north of the node, well beyond the allowed distance
+        // ~17 km north of the node, well beyond the 2 km claim radius.
         assertEquals("too_far", claimError(parent.id(), new ClaimRequest(LAT + 0.15, LNG), "device-b"));
     }
 

@@ -25,8 +25,8 @@ public final class NodeDtos {
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
 
     /**
-     * Body for POST /api/nodes/{id}/claim. Just the device's real GPS fix, so the server can check
-     * the person is physically near the node before reserving a slot for them.
+     * Body for POST /api/nodes/{id}/claim. The coordinates record the claim location for the
+     * resulting contribution; claiming itself is not restricted by distance.
      * The @NotNull / @Decimal... lines make Spring reject a missing or impossible coordinate
      * before our code runs (input validation).
      */

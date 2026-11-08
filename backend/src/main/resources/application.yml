@@ -44,7 +44,8 @@ kindred:
     # A node itself stays claimable until its chain ends (see chain.max-days).
     finish-hours: 12
   continue-rules:
-    # How close (metres) you must be to the parent's real location to continue it.
+    # How close someone must be to claim a node shown on their map.
+    # This does not restrict where they may post after claiming it.
     max-distance-meters: 2000
   chain:
     # A chain with open slots but no new link for this long is "Quiet" instead of "Active".

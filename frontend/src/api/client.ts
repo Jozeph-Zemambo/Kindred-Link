@@ -49,8 +49,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) });
 
-/** Map pins within radius metres of a point (public, blurred locations). */
-export function listNearby(lat: number, lng: number, radius = 5000): Promise<NodePin[]> {
+/** Map pins within the claim radius of a point (public, blurred locations). */
+export function listNearby(lat: number, lng: number, radius = 2000): Promise<NodePin[]> {
   if (USE_MOCKS) return Promise.resolve(mockPins(false));
   return request(`/api/nodes?lat=${lat}&lng=${lng}&radius=${radius}`);
 }
@@ -87,7 +87,7 @@ export async function uploadPhoto(uri: string): Promise<PhotoUploadResponse> {
   return res.json() as Promise<PhotoUploadResponse>;
 }
 
-/** Claim a nearby node before the user can post the next act. */
+/** Claim a visible node before the user can post the next act. */
 export function claimNode(nodeId: number, body: ClaimRequest): Promise<ClaimResponse> {
   if (USE_MOCKS) {
     const claimedAt = new Date().toISOString();
@@ -102,7 +102,7 @@ export function createNode(body: CreateNodeRequest): Promise<NodeDetail> {
   return request('/api/nodes', post(body));
 }
 
-/** Continue a chain under parentId. Fails with ApiError titles slot_closed / own_node / too_far. */
+/** Continue a chain under parentId. The claim deadline, not distance, limits completion. */
 export function continueNode(parentId: number, body: CreateNodeRequest): Promise<NodeDetail> {
   if (USE_MOCKS) return Promise.resolve({ ...mockNode(parentId), description: body.description });
   return request(`/api/nodes/${parentId}/continue`, post(body));

@@ -39,6 +39,8 @@ export type ChainMapProps = {
   onBusinessPress?: (id: number) => void;
   /** Force the act card on or off; by default it shows only when onNodePress isn't given. */
   showDetails?: boolean;
+  /** Disable the map camera animation when it is already inside another transition. */
+  animateMap?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -76,7 +78,7 @@ function startRegion(points: { lat: number; lng: number }[]): Region {
   };
 }
 
-export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress, showDetails, style }: ChainMapProps) {
+export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress, showDetails, animateMap = true, style }: ChainMapProps) {
   const map = useRef<MapView>(null);
   const youId = useMemo(() => youMarker(nodes), [nodes]);
   const ready = useRef(false);
@@ -89,11 +91,11 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
   const fit = () => {
     const coords = [...nodes, ...businesses].map((p) => ({ latitude: p.lat, longitude: p.lng }));
     if (coords.length === 1) {
-      map.current?.animateToRegion({ ...coords[0], latitudeDelta: 0.006, longitudeDelta: 0.006 }, 700);
+      map.current?.animateToRegion({ ...coords[0], latitudeDelta: 0.006, longitudeDelta: 0.006 }, animateMap ? 700 : 0);
     } else if (coords.length > 1) {
       map.current?.fitToCoordinates(coords, {
         edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
-        animated: true,
+        animated: animateMap,
       });
     }
   };

@@ -24,7 +24,7 @@ export type LatLngPoint = { lat: number; lng: number };
 export type JoinMapProps = {
   /** Raw pins from listNearby; this component applies the findable rule itself. */
   pins: NodePin[];
-  /** Where the user is when the screen loads. The join radius starts here, then follows the live GPS. */
+  /** Where the user is when the screen loads. The claim radius follows live GPS on native. */
   me: LatLngPoint;
   radiusMeters?: number;
   businesses?: BusinessPin[];

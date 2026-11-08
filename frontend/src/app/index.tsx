@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@clerk/expo';
 
-import { getChain, listMine, listNearby } from '@/api/client';
+import { getChain, listBusinesses, listMine, listNearby } from '@/api/client';
 import { isClerkConfigured } from '@/auth/clerk';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
@@ -133,7 +133,11 @@ type TreeSummary = {
 
 export default function HomeScreen() {
   const { data, error, loading, reload } = useLoad(async () => {
-    const [mine, nearbyMe] = await Promise.all([listMine(), getMyLocation()]);
+    const [mine, nearbyMe, businesses] = await Promise.all([
+      listMine(),
+      getMyLocation(),
+      listBusinesses().catch(() => []),
+    ]);
     const nearbyPins = await listNearby(nearbyMe.lat, nearbyMe.lng);
     const latest = mine[0];
     const chainIds = [...new Set(mine.map((node) => node.chainId))];
@@ -151,6 +155,7 @@ export default function HomeScreen() {
       trees,
       nearbyMe,
       nearbyPins,
+      businesses,
     };
   });
   const [now, setNow] = useState(Date.now());
@@ -207,7 +212,7 @@ export default function HomeScreen() {
         <View style={styles.actionsRow}><ActionButton label="Start a new tree" primary onPress={() => router.push({ pathname: '/explore', params: { mode: 'start' } })} /><ActionButton label="Find a ripple" onPress={() => router.push('/recap')} /></View>
 
         <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Nearby kindness</Text><Text style={styles.sectionSubtitle}>A little good is happening around you</Text></View></View>
-        {loading || error || !data ? <View style={styles.stateCard}><LoadState error={error} onRetry={reload} /></View> : <View style={styles.mapCard}><JoinMap pins={data.nearbyPins} me={data.nearbyMe} onPinPress={() => router.push('/explore')} onMapPress={() => router.push('/explore')} /><View pointerEvents="none" style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{openNearby ? `${openNearby} open ${openNearby === 1 ? 'act' : 'acts'}` : 'No open acts nearby'}</Text><Text style={styles.mapOverlayText}>Nearby kindness</Text></View></View>}
+        {loading || error || !data ? <View style={styles.stateCard}><LoadState error={error} onRetry={reload} /></View> : <View style={styles.mapCard}><JoinMap pins={data.nearbyPins} me={data.nearbyMe} businesses={data.businesses} onPinPress={() => router.push('/explore')} onMapPress={() => router.push('/explore')} /><View pointerEvents="none" style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{openNearby ? `${openNearby} open ${openNearby === 1 ? 'act' : 'acts'}` : 'No open acts nearby'}</Text><Text style={styles.mapOverlayText}>Nearby kindness</Text></View></View>}
 
         {data?.trees.length ? <View style={styles.section}><View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>My latest tree</Text><Text style={styles.sectionSubtitle}>Updates as your kindness moves</Text></View><Pressable onPress={() => router.push('/trees')}><Text style={styles.textLink}>Open</Text></Pressable></View>{visibleTrees.map((summary) => <Pressable key={summary.chainId} style={styles.treeCard} onPress={() => router.push('/trees')}><View style={styles.treeIcon}><Text style={styles.treeIconText}>↗</Text></View><View style={styles.treeCopy}><Text style={styles.treeTitle}>The tree you’re growing</Text><Text style={styles.treeDescription}>{formatImpact(summary.tree.nodes.length)} growing through this tree</Text><View style={styles.treeMetaRow}><Text style={styles.statusPill}>{summary.tree.status === 'ENDED' ? 'ENDED' : 'GROWING'}</Text></View></View><Text style={styles.chevron}>›</Text></Pressable>)}</View> : null}
 

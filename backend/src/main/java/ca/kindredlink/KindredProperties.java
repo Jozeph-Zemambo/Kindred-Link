@@ -16,6 +16,7 @@ public record KindredProperties(
     /** finishHours: how long a person has to post their act after claiming a slot. */
     public record Node(int maxChildren, int finishHours) {}
 
+    /** Distance allowed when reserving a visible node; it does not apply when posting later. */
     public record Continue(double maxDistanceMeters) {}
 
     public record Chain(int quietAfterHours, int maxDays) {}

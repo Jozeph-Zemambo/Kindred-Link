@@ -52,12 +52,13 @@ class NodeContinueTest {
     }
 
     @Test
-    void postingFromFarAwayIsRejectedEvenWithAClaim() {
+    void postingFromFarAwayIsAllowedWithinClaimWindow() {
         NodeDetail parent = service.createRoot(request("Returned a wallet", 51.0500, -114.0700), "device-a");
         service.claim(parent.id(), new ClaimRequest(51.0502, -114.0702), "device-b");
 
-        // device-b claimed while nearby, but tries to post from ~17 km away
-        assertEquals("too_far", postError(parent.id(), request("Too far", 51.2000, -114.0700), "device-b"));
+        // device-b claimed earlier and can post from ~17 km away.
+        NodeDetail child = service.continueChain(parent.id(), request("Logged later", 51.2000, -114.0700), "device-b");
+        assertEquals(parent.id(), child.parentId());
     }
 
     @Test

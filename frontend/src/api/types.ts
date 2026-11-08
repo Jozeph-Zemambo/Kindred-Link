@@ -36,7 +36,7 @@ export type NodePin = {
   depth?: number;
 };
 
-/** Body for POST /api/nodes/{id}/claim: the device's real GPS fix (NodeDtos.ClaimRequest). */
+/** Body for POST /api/nodes/{id}/claim: coordinates associated with the claim. */
 export type ClaimRequest = { lat: number; lng: number };
 
 /** After a claim: when it started and the deadline to post your act (NodeDtos.ClaimResponse). */
@@ -147,7 +147,7 @@ export type Recap = {
   totalActs?: number;
 };
 
-/** Error body from the backend (Spring problem details), e.g. title "slot_closed" or "too_far". */
+/** Error body from the backend (Spring problem details), e.g. title "slot_closed" or "claim_expired". */
 export type ApiProblem = {
   status: number;
   title: string;

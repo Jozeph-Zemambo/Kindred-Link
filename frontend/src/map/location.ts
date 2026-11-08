@@ -17,13 +17,13 @@ export async function getMyLocation(): Promise<MyLocation> {
 }
 
 /**
- * For joining a node and posting an act: a real GPS fix only. The backend checks distance against
- * what we send, so the campus fallback would let anyone who denies location join campus nodes.
+ * Claiming requires a real GPS fix in live mode so the backend can enforce the visible map radius.
+ * Posting after a claim can instead use the map picker and is not distance-restricted.
  */
 export async function requireMyLocation(): Promise<MyLocation> {
   const me = await getMyLocation();
   if (!me.real && !USE_MOCKS) {
-    throw new Error('Turn on location for Kindred Link in Settings. You can only join or continue an act when you are near it.');
+    throw new Error('Turn on location for Kindred Link in Settings. You need to be within the map radius to claim a node.');
   }
   return me;
 }
