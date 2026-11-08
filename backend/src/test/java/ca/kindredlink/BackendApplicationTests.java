@@ -1,22 +1,23 @@
 package ca.kindredlink;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import ca.kindredlink.business.Business;
-import ca.kindredlink.business.BusinessRepository;
-import ca.kindredlink.business.CheckinRepository;
-import ca.kindredlink.node.NodeRepository;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.ActiveProfiles;
+
+import ca.kindredlink.business.Business;
+import ca.kindredlink.business.BusinessRepository;
+import ca.kindredlink.business.CheckinRepository;
+import ca.kindredlink.node.NodeRepository;
 
 @SpringBootTest
 @ActiveProfiles("test")
