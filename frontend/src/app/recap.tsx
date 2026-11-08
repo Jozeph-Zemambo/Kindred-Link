@@ -8,11 +8,11 @@ import type { RecapMoment } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 import { BottomNav } from '@/components/BottomNav';
-import { ChainMap } from '@/map';
+import { assetUrl, ChainMap } from '@/map';
 
 const COLORS = { cream: '#FFF9E9', yellow: '#FFD36D', blue: '#80B9E5', tangerine: '#F49A68', navy: '#303A59', white: '#FFFFFF', muted: '#6C748A', line: '#E9DEC4', purple: '#9B8BE8' };
 
-function roundedImpact(count: number) { return `${Math.max(5, Math.round(count / 5) * 5)}+`; }
+const acts = (count: number) => `${count} ${count === 1 ? 'act' : 'acts'}`;
 
 function formatRecapPeriod(week?: string) {
   const match = week?.match(/^(\d{4})-W(\d{2})$/);
@@ -54,9 +54,9 @@ export default function RecapScreen() {
           <View style={[styles.storyCard, story === 'intro' && styles.introCard, story === 'trees' && styles.treesCard, story === 'acts' && styles.actsCard, story === 'map' && styles.mapStoryCard, typeof story !== 'string' && styles.photoCard]}>
             {story === 'intro' && <><Text style={styles.kicker}>A LITTLE LOOK BACK</Text><Text style={styles.bigTitle}>Your kindness{`\n`}kept moving.</Text><Text style={styles.storyBody}>Here’s the ripple you helped create during {formatRecapPeriod(data.week)}.</Text></>}
             {story === 'trees' && <><Text style={styles.kicker}>YOUR RIPPLE</Text><Text style={styles.statNumber}>{stats.trees}</Text><Text style={styles.statTitle}>trees grew with you</Text><Text style={styles.storyBody}>Every tree is a collection of small acts that kept moving from person to person.</Text></>}
-            {story === 'acts' && <><Text style={styles.kicker}>YOUR BIGGEST MOMENT</Text><Text style={styles.statNumber}>{roundedImpact(stats.longest)}</Text><Text style={styles.statTitle}>acts in your longest ripple</Text><Text style={styles.storyBody}>That’s how far one kind choice travelled through the community.</Text></>}
-            {typeof story !== 'string' && story.kind === 'photo' && <><Text style={styles.kicker}>A MOMENT WORTH KEEPING</Text><View style={styles.photoFrame}>{story.moment.photoUrl ? <Image source={{ uri: story.moment.photoUrl }} style={styles.photo} resizeMode="cover" /> : <Text style={styles.photoFallback}>Photo coming soon</Text>}</View><Text style={styles.photoCaption}>{story.moment.description}</Text><Text style={styles.storyBody}>A glimpse of the kindness you helped set in motion.</Text></>}
-            {story === 'map' && featured && <><Text style={styles.kicker}>THE RIPPLE IN MOTION</Text><View style={styles.storyMap}><ChainMap nodes={featured.nodes} onNodePress={() => undefined} /></View><Text style={styles.statTitle}>{roundedImpact(featured.nodes.length)} acts connected</Text><Text style={styles.storyBody}>Your kindness became part of something bigger.</Text></>}
+            {story === 'acts' && <><Text style={styles.kicker}>YOUR BIGGEST MOMENT</Text><Text style={styles.statNumber}>{stats.longest}</Text><Text style={styles.statTitle}>{stats.longest === 1 ? 'act' : 'acts'} in your longest ripple</Text><Text style={styles.storyBody}>That’s how far one kind choice travelled through the community.</Text></>}
+            {typeof story !== 'string' && story.kind === 'photo' && <><Text style={styles.kicker}>A MOMENT WORTH KEEPING</Text><View style={styles.photoFrame}>{story.moment.photoUrl ? <Image source={{ uri: assetUrl(story.moment.photoUrl) }} style={styles.photo} resizeMode="cover" /> : <Text style={styles.photoFallback}>Photo coming soon</Text>}</View><Text style={styles.photoCaption}>{story.moment.description}</Text><Text style={styles.storyBody}>A glimpse of the kindness you helped set in motion.</Text></>}
+            {story === 'map' && featured && <><Text style={styles.kicker}>THE RIPPLE IN MOTION</Text><View style={styles.storyMap}><ChainMap nodes={featured.nodes} onNodePress={() => undefined} /></View><Text style={styles.statTitle}>{acts(featured.nodes.length)} connected</Text><Text style={styles.storyBody}>Your kindness became part of something bigger.</Text></>}
           </View>
           <View style={styles.navigation}><Pressable onPress={() => setStoryIndex((index) => Math.max(0, index - 1))} disabled={storyIndex === 0} style={[styles.navButton, storyIndex === 0 && styles.disabledButton]}><Text style={styles.navButtonText}>Back</Text></Pressable><Text style={styles.pageCount}>{storyIndex + 1} / {stories.length}</Text><Pressable onPress={() => storyIndex === stories.length - 1 ? router.replace('/') : setStoryIndex((index) => Math.min(stories.length - 1, index + 1))} style={styles.navButton}><Text style={styles.navButtonText}>{storyIndex === stories.length - 1 ? 'Done' : 'Next'}</Text></Pressable></View>
         </View>

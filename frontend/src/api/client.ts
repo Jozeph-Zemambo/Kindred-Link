@@ -1,9 +1,12 @@
 import { API_URL, RECAP_ENDPOINT_READY, USE_MOCKS } from './config';
 import { getDeviceId } from './deviceId';
-import { mockBusinesses, mockChain, mockNode, mockPins, mockRecap, mockStats } from './mocks';
+import { ancestors, descendants } from '@/map/graph';
+
+import { mockBusinesses, mockChain, mockNode, mockPins, mockStats } from './mocks';
 import type {
   ApiProblem,
   BusinessHub,
+  ChainNode,
   ChainStats,
   ChainTree,
   CheckinRequest,
@@ -119,8 +122,76 @@ export function checkin(businessId: number, body: CheckinRequest): Promise<Check
   return request(`/api/businesses/${businessId}/checkin`, post(body));
 }
 
-/** Weekly recap. Mock data until the backend adds GET /api/me/recap. */
+/** Weekly recap. Until the backend adds GET /api/me/recap, the app builds it from my nodes and their trees. */
 export function getRecap(week?: string): Promise<Recap> {
-  if (USE_MOCKS || !RECAP_ENDPOINT_READY) return Promise.resolve(mockRecap);
+  if (USE_MOCKS || !RECAP_ENDPOINT_READY) return buildRecap();
   return request(`/api/me/recap${week ? `?week=${week}` : ''}`);
+}
+
+/** Monday 00:00 local time: the start of the current kindness period (same window as Home). */
+function periodStart(now = new Date()): Date {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+/** ISO week label ("2026-W45") for the week that starts on this Monday. */
+function isoWeek(monday: Date): string {
+  const thursday = new Date(monday);
+  thursday.setDate(monday.getDate() + 3);
+  const dayOfYear = Math.round((thursday.getTime() - new Date(thursday.getFullYear(), 0, 1).getTime()) / 86_400_000);
+  return `${thursday.getFullYear()}-W${String(Math.floor(dayOfYear / 7) + 1).padStart(2, '0')}`;
+}
+
+/** The node plus its longest path downward (root-to-leaf direction). */
+function longestDown(nodes: ChainNode[], id: number): ChainNode[] {
+  const node = nodes.find((n) => n.id === id);
+  if (!node) return [];
+  const below = nodes
+    .filter((n) => n.parentId === id)
+    .map((child) => longestDown(nodes, child.id))
+    .sort((a, b) => b.length - a.length)[0];
+  return [node, ...(below ?? [])];
+}
+
+const MAX_MOMENT_LOOKUPS = 12;
+
+async function buildRecap(): Promise<Recap> {
+  const start = periodStart();
+  const mine = (await listMine()).filter((n) => Date.parse(n.createdAt) >= start.getTime());
+  const trees = await Promise.all([...new Set(mine.map((n) => n.chainId))].map((id) => getChain(id)));
+  const treeOf = (chainId: number) => trees.find((t) => t.chainId === chainId)!;
+
+  // For each of my acts, the longest straight line through it: everyone before me, then the longest run after.
+  const seen = new Set<string>();
+  const lines = mine
+    .map((m) => {
+      const tree = treeOf(m.chainId);
+      return { mineId: m.id, line: { ...tree, nodes: [...ancestors(tree.nodes, m.id).reverse(), ...longestDown(tree.nodes, m.id).slice(1)] } };
+    })
+    .filter(({ line }) => {
+      const key = line.nodes.map((n) => n.id).join(',');
+      return !seen.has(key) && seen.add(key);
+    })
+    .sort((a, b) => b.line.nodes.length - a.line.nodes.length);
+
+  // Photo moments: acts that grew from my act in the featured line's tree, newest first.
+  const featured = lines[0];
+  const mineIds = new Set(mine.map((n) => n.id));
+  const after = featured
+    ? descendants(treeOf(featured.line.chainId).nodes, featured.mineId).filter((n) => !mineIds.has(n.id)).reverse()
+    : [];
+  const details = await Promise.all(after.slice(0, MAX_MOMENT_LOOKUPS).map((n) => getNode(n.id)));
+
+  return {
+    week: isoWeek(start),
+    longestChains: lines.slice(0, 3).map(({ line }) => line),
+    largestNets: [...trees].sort((a, b) => b.nodes.length - a.nodes.length).slice(0, 3),
+    totalTrees: trees.length,
+    totalActs: trees.reduce((sum, t) => sum + t.nodes.length, 0),
+    moments: details
+      .filter((d) => d.photoUrl)
+      .map((d) => ({ id: d.id, chainId: d.chainId, description: d.description, photoUrl: d.photoUrl, createdAt: d.createdAt })),
+  };
 }
