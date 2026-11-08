@@ -122,7 +122,7 @@ test('ChainMap drawIn: starts close on the latest "mine" node, both ready callba
   const nodeMarkers = findAll(tree, 'Marker').filter((m) => !m.props.title);
   assert.equal(nodeMarkers.length, 1, 'only the start node is drawn at frontier 0');
   assert.equal(nodeMarkers[0].props.coordinate.latitude, 51.06);
-  assert.equal(findAll(tree, 'Marker').filter((m) => m.props.title).length, 1, 'business marker still renders during draw-in');
+  assert.equal(findAll(tree, 'Marker').filter((m) => m.props.title).length, 0, 'businesses wait until the tree has drawn itself in');
 
   map.props.onMapReady();
   assert.deepEqual(ctx.setCalls[0], [0, true], 'mapReady state set');

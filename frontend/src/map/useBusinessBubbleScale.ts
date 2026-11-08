@@ -35,7 +35,22 @@ export async function measureBusinessBubbleScale(map: Pick<MapView, 'getCamera' 
   }
 }
 
-/** Tracks the projection-based scale; serializes measurements with live results and a coalesced follow-up. */
+/**
+ * Bubbles follow the zoom only within this range. Uncapped, a close-up camera (zoom ~17) made a
+ * nearby logo several times its normal size and swallow the map.
+ */
+export const MIN_BUBBLE_SCALE = 0.25;
+export const MAX_BUBBLE_SCALE = 0.6;
+
+export function clampBubbleScale(scale: number): number {
+  return Math.min(MAX_BUBBLE_SCALE, Math.max(MIN_BUBBLE_SCALE, scale));
+}
+
+/**
+ * Tracks the projection-based scale; serializes measurements with live results and a coalesced
+ * follow-up. Maps should wire only onRegionChangeComplete (not onRegionChange): resizing a marker
+ * mid-gesture makes the native map lose its anchor and the bubble drifts off its spot.
+ */
 export function useBusinessBubbleScale(mapRef: RefObject<MapView | null>) {
   const [mapScale, setScale] = useState(1);
   const busy = useRef(false);
@@ -71,7 +86,7 @@ export function useBusinessBubbleScale(mapRef: RefObject<MapView | null>) {
   }, [mapRef]);
 
   return {
-    mapScale,
+    mapScale: clampBubbleScale(mapScale),
     onMapReady: requestMeasure,
     onLayout: (_e: LayoutChangeEvent) => requestMeasure(),
     onRegionChange: requestMeasure,

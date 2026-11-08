@@ -136,7 +136,7 @@ test('useBusinessBubbleScale: completed measures apply during the gesture; coale
   const h = hookRunner();
   const map = fakeMap({ zoom: 2, deferPoints: true });
   const out = h.render({ current: map });
-  assert.equal(out.mapScale, 1, 'starts at the original size');
+  assert.equal(out.mapScale, 0.6, 'starts at the original size, capped at the max bubble scale');
   h.mount();
   out.onMapReady();
   await tick(); // camera resolved, pair #1 pending (zoom 2)
