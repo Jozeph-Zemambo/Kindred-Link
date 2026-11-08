@@ -23,11 +23,20 @@ export type NodePin = {
   closesAt: string;
   hasPhoto: boolean;
   mine: boolean;
-  /** Requested from backend (not sent yet): lets the join map hide nodes that already have a child. */
+  /**
+   * Children who actually posted (max 2). A claim that isn't finished doesn't count; openSlots
+   * counts claims instead. Lets the join map hide nodes that already have a child.
+   */
   childCount?: number;
   /** Requested from backend (not sent yet): acts before this one. Drives "10+ acts" and the popular ripple. */
   depth?: number;
 };
+
+/** Body for POST /api/nodes/{id}/claim: the device's real GPS fix (NodeDtos.ClaimRequest). */
+export type ClaimRequest = { lat: number; lng: number };
+
+/** After a claim: when it started and the deadline to post your act (NodeDtos.ClaimResponse). */
+export type ClaimResponse = { claimedAt: string; finishBy: string };
 
 export type NodeDetail = {
   id: number;
@@ -95,6 +104,8 @@ export type BusinessHub = {
   kindnessActs: number;
   /** Logical bubble diameter (BusinessBubbleSize.java). The map turns units into pixels. */
   diameterUnits: number;
+  /** Requested from backend (not sent yet): total paid forward here, in cents. */
+  paidForwardCents?: number;
 };
 
 export type CheckinRequest = {

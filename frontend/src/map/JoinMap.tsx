@@ -5,6 +5,7 @@ import MapView, { Circle, Marker } from 'react-native-maps';
 import type { NodePin } from '@/api/types';
 
 import { BusinessBubble } from './BusinessBubble';
+import { BusinessSheet } from './BusinessSheet';
 import type { BusinessPin } from './ChainMap';
 import { isFindable } from './findable';
 import { JoinSheet } from './JoinSheet';
@@ -27,14 +28,16 @@ export type JoinMapProps = {
   businesses?: BusinessPin[];
   /** "Join this chain" in the panel. What happens next (timer, home status) is the screen's call. */
   onJoin?: (pin: NodePin) => void;
-  /** Also called on tap, alongside the panel opening. */
+  /** Screen handles pin taps itself (e.g. navigates). If omitted, the map opens the join panel. */
   onPinPress?: (pin: NodePin) => void;
+  /** Screen handles business taps itself. If omitted, the map opens the business panel. */
   onBusinessPress?: (id: number) => void;
   style?: StyleProp<ViewStyle>;
 };
 
 export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [], onJoin, onPinPress, onBusinessPress, style }: JoinMapProps) {
   const [selected, setSelected] = useState<NodePin | null>(null);
+  const [openBusiness, setOpenBusiness] = useState<BusinessPin | null>(null);
   const findable = useMemo(() => pins.filter((p) => isFindable(p)), [pins]);
   const popular = useMemo(() => mostPopular(findable), [findable]);
 
@@ -57,7 +60,7 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}
-            onPress={() => onBusinessPress?.(b.id)}
+            onPress={() => (onBusinessPress ? onBusinessPress(b.id) : setOpenBusiness(b))}
           >
             <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} />
           </Marker>
@@ -72,10 +75,7 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
               anchor={{ x: 0.5, y: 0.5 }}
               // Android renders marker views as snapshots; keep tracking only where the ripple animates.
               tracksViewChanges={pulse}
-              onPress={() => {
-                onPinPress?.(p);
-                setSelected(p);
-              }}
+              onPress={() => (onPinPress ? onPinPress(p) : setSelected(p))}
             >
               <NodeDot fill={isSelected ? palette.tangerine : palette.yellow} size={18} pulse={pulse} />
             </Marker>
@@ -83,6 +83,7 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
         })}
       </MapView>
       <JoinSheet pin={selected} onClose={() => setSelected(null)} onJoin={onJoin} />
+      <BusinessSheet business={openBusiness} onClose={() => setOpenBusiness(null)} />
     </View>
   );
 }
