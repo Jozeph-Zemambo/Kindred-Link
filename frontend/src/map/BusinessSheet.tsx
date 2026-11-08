@@ -44,16 +44,17 @@ export function BusinessSheet({ business, onClose }: { business: BusinessPin | n
               )}
             </View>
             <Text style={styles.name}>{business.name}</Text>
+            {business.demoTotals && <Text style={styles.demoTag}>Demo totals</Text>}
           </View>
 
           <View style={styles.stats}>
             {business.visitors !== undefined && (
               <View style={[styles.stat, { backgroundColor: palette.blue }]}>
-                <Text style={styles.statValue}>{roundedPlus(business.visitors)}</Text>
+                <Text style={styles.statValue}>{business.demoTotals ? business.visitors.toLocaleString('en-CA') : roundedPlus(business.visitors)}</Text>
                 <Text style={styles.statLabel}>people joined in here</Text>
               </View>
             )}
-            {business.paidForwardCents !== undefined ? (
+            {business.paidForwardCents !== undefined && !business.demoTotals ? (
               <View style={[styles.stat, { backgroundColor: palette.yellow }]}>
                 <Text style={styles.statValue}>{dollars(business.paidForwardCents)}</Text>
                 <Text style={styles.statLabel}>paid forward</Text>
@@ -61,7 +62,7 @@ export function BusinessSheet({ business, onClose }: { business: BusinessPin | n
             ) : (
               business.kindnessActs !== undefined && (
                 <View style={[styles.stat, { backgroundColor: palette.yellow }]}>
-                  <Text style={styles.statValue}>{roundedPlus(business.kindnessActs)}</Text>
+                  <Text style={styles.statValue}>{business.demoTotals ? business.kindnessActs.toLocaleString('en-CA') : roundedPlus(business.kindnessActs)}</Text>
                   <Text style={styles.statLabel}>acts of kindness</Text>
                 </View>
               )
@@ -93,6 +94,7 @@ const styles = StyleSheet.create({
   logo: { width: 104, height: 104, borderRadius: 52 },
   initial: { color: palette.navy, fontSize: 44, fontWeight: '800' },
   name: { color: palette.navy, fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  demoTag: { color: palette.muted, fontSize: 12, fontWeight: '700' },
   stats: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: OUTLINE },
   statValue: { color: palette.navy, fontSize: 24, fontWeight: '800' },

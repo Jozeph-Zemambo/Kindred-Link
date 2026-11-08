@@ -13,3 +13,6 @@ spring:
 kindred:
   moderation:
     admin-key: test-key
+    # Explicitly blank so a GOOGLE_VISION_API_KEY on the host machine can't enable real calls.
+    vision:
+      api-key: ""

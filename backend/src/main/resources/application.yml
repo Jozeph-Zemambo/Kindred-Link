@@ -24,7 +24,7 @@ spring:
       enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 clerk:
   # Enable to require verified Clerk sessions for API writes and private "mine" requests.
@@ -68,5 +68,9 @@ kindred:
     # them. Empty means moderation is switched off, so nobody can approve anything. Turn it on by
     # setting the MODERATOR_KEY environment variable (never commit a real key).
     admin-key: ${MODERATOR_KEY:}
+    # Google Cloud Vision SafeSearch screening of new uploads (see DEPLOYMENT.md). Empty key means
+    # screening is off and every photo waits in the manual queue. Never commit a real key.
+    vision:
+      api-key: ${GOOGLE_VISION_API_KEY:}
 
   seed-demo-data: true

@@ -1,0 +1,23 @@
+# Local-only backend datasource for the `local` Spring profile.
+#
+# Copy this file to config/application-local.properties (same directory) and
+# fill in your own values. That copy is gitignored, so secrets never enter
+# version control.
+#
+# Spring only reads this file while the `local` profile is active, so it stays
+# dormant during default runs and `mvn test`. Opt in explicitly, e.g. from
+# this directory:
+#
+#   .\mvnw.cmd "-Dspring-boot.run.profiles=postgres,local" spring-boot:run
+#
+# The `postgres` profile (src/main/resources/application-postgres.yml)
+# supplies the JPA settings; these properties supply the datasource. Keep
+# `?sslmode=require` for hosted providers such as Render.
+#
+# OS environment variables SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME
+# and SPRING_DATASOURCE_PASSWORD still override these values when set.
+# Without `local` active the MySQL defaults in application.yml apply.
+
+spring.datasource.url=jdbc:postgresql://<host>:<port>/<database>?sslmode=require
+spring.datasource.username=<database-user>
+spring.datasource.password=<database-password>

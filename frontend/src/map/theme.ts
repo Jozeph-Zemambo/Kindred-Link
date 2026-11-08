@@ -42,7 +42,12 @@ const androidMapStyle: MapStyleElement[] = [
   { elementType: 'labels.text.stroke', stylers: [{ color: palette.cream }] },
   { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: '#F1EAD2' }] },
+  // Keep the base cream; hide building/land-cover/terrain surfaces that can overlay it.
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: palette.cream }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry.fill', stylers: [{ color: palette.cream }] },
+  { featureType: 'landscape.natural.landcover', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+  { featureType: 'landscape.natural.terrain', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   { featureType: 'road', elementType: 'geometry', stylers: [{ color: palette.white }] },
   { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#F3E6C6' }] },
@@ -59,4 +64,4 @@ const androidMapStyle: MapStyleElement[] = [
 export const BASE_MAP: Partial<MapViewProps> =
   Platform.OS === 'ios'
     ? { mapType: 'mutedStandard', showsPointsOfInterests: false, showsBuildings: false, userInterfaceStyle: 'light' }
-    : { customMapStyle: androidMapStyle, showsBuildings: false, toolbarEnabled: false };
+    : { mapType: 'standard', customMapStyle: androidMapStyle, showsBuildings: false, toolbarEnabled: false };

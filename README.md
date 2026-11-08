@@ -68,6 +68,31 @@ An optional `postgres` profile also exists
 (`SPRING_PROFILES_ACTIVE=postgres`, same `DATABASE_*` overrides) for a
 PostgreSQL deployment, but MySQL is the default.
 
+### Local config file (e.g. hosted PostgreSQL such as Render)
+
+Spring Boot also reads `./config/application-<profile>.properties` when the
+backend is launched from `backend/` - no Docker needed. To run against your
+own hosted PostgreSQL, copy
+`backend/config/application-local.properties.example` to
+`backend/config/application-local.properties` (the copy is gitignored, so
+secrets stay out of version control), replace the placeholders, then opt in
+to the `local` profile alongside `postgres`:
+
+```powershell
+cd backend
+.\mvnw.cmd "-Dspring-boot.run.profiles=postgres,local" spring-boot:run
+```
+
+The `postgres` profile supplies the PostgreSQL/JPA settings and `local` makes
+Spring load your gitignored datasource file (keep `?sslmode=require` for
+hosted providers). Because nothing in the file loads unless `local` is
+selected, the default `spring-boot:run` and `mvn test` are unaffected - MySQL
+stays the default and tests keep using isolated in-memory H2.
+`SPRING_DATASOURCE_*` environment variables override the file when set.
+
+To host the API itself (Docker on Render), see
+[backend/DEPLOYMENT.md](backend/DEPLOYMENT.md).
+
 Frontend:
 
 ```bash

@@ -28,7 +28,7 @@ type JoinSheetProps = {
 };
 
 export function JoinSheet({ pin, onClose, onJoin }: JoinSheetProps) {
-  const { data } = useLoad(async () => {
+  const { data, loading } = useLoad(async () => {
     if (!pin) return null;
     const [node, tree] = await Promise.all([getNode(pin.id), getChain(pin.chainId)]);
     // Everyone before this node, newest first (the node itself is the latest act).
@@ -37,6 +37,9 @@ export function JoinSheet({ pin, onClose, onJoin }: JoinSheetProps) {
   }, [pin?.id]);
   const [openId, setOpenId] = useState<number | null>(null);
   useEffect(() => setOpenId(null), [pin?.id]);
+  // useLoad keeps the previous load's data while the next one runs, so only trust it
+  // when it still belongs to the pin on screen.
+  const current = data?.node.id === pin?.id ? data : null;
 
   return (
     <SidePanel
@@ -62,14 +65,15 @@ export function JoinSheet({ pin, onClose, onJoin }: JoinSheetProps) {
     >
       {pin && (
         <ScrollView contentContainerStyle={styles.body}>
-          <Text style={styles.title}>{data?.node.description ?? ' '}</Text>
+          <PhotoFrame photoUrl={current?.node.photoUrl} colour={palette.blue} loading={loading || !current} />
+          <Text style={styles.title}>{current?.node.description ?? ' '}</Text>
           <View style={styles.pills}>
             <Text style={[styles.pill, { backgroundColor: palette.blue }]}>{actsInLineLabel(pin.depth)}</Text>
           </View>
 
           <Text style={styles.section}>Who kept it going</Text>
-          {data && data.before.length === 0 && <Text style={styles.muted}>This act started the line. You'd be next.</Text>}
-          {data?.before.slice(0, RECENT).map((n, i) => {
+          {current && current.before.length === 0 && <Text style={styles.muted}>This act started the line. You'd be next.</Text>}
+          {current?.before.slice(0, RECENT).map((n, i) => {
             const colour = ROW_COLOURS[i % ROW_COLOURS.length];
             const open = openId === n.id;
             return (
@@ -85,30 +89,36 @@ export function JoinSheet({ pin, onClose, onJoin }: JoinSheetProps) {
               </Pressable>
             );
           })}
-          {data && data.before.length > RECENT && <Text style={styles.muted}>…and {data.before.length - RECENT} more before them</Text>}
+          {current && current.before.length > RECENT && <Text style={styles.muted}>…and {current.before.length - RECENT} more before them</Text>}
         </ScrollView>
       )}
     </SidePanel>
   );
 }
 
-/** The photo someone attached to their act, cropped 4:3; a placeholder in the row's colour if none. */
-function ActPhoto({ nodeId, colour }: { nodeId: number; colour: string }) {
-  const { data: node, loading } = useLoad(() => getNode(nodeId), [nodeId]);
+/** Fixed 4:3 photo frame: the act's approved photo, a plain colour block while loading, or a placeholder. */
+function PhotoFrame({ photoUrl, colour, loading }: { photoUrl?: string | null; colour: string; loading: boolean }) {
   return (
     <View style={[styles.photo, { backgroundColor: colour }]}>
-      {node?.photoUrl ? (
-        <Image source={{ uri: assetUrl(node.photoUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      {photoUrl ? (
+        <Image key={photoUrl} source={{ uri: assetUrl(photoUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : (
         !loading && (
           <View style={styles.noPhoto}>
             <Text style={[styles.noPhotoMark, { color: textOn(colour) }]}>✦</Text>
-            <Text style={[styles.noPhotoText, { color: textOn(colour) }]}>No photo for this act</Text>
+            <Text style={[styles.noPhotoText, { color: textOn(colour) }]}>No photo available</Text>
           </View>
         )
       )}
     </View>
   );
+}
+
+/** The photo someone attached to their act, in the row's colour; fetched per contributor. */
+function ActPhoto({ nodeId, colour }: { nodeId: number; colour: string }) {
+  const { data: node, loading } = useLoad(() => getNode(nodeId), [nodeId]);
+  const ready = node?.id === nodeId;
+  return <PhotoFrame photoUrl={ready ? node?.photoUrl : null} colour={colour} loading={loading || !ready} />;
 }
 
 const styles = StyleSheet.create({

@@ -5,9 +5,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { claimNode, continueNode, createNode, getNode, listBusinesses, listNearby, uploadPhoto } from '@/api/client';
+import { claimNode, continueNode, createNode, getNode, listNearby, uploadPhoto } from '@/api/client';
 import type { NodePin } from '@/api/types';
+import { useBusinesses } from '@/api/useBusinesses';
 import { useLoad } from '@/api/useLoad';
+import { BusinessMapStatus } from '@/components/BusinessMapStatus';
 import { LoadState } from '@/components/LoadState';
 import { getMyLocation, JoinMap, LocationPicker, requireMyLocation } from '@/map';
 
@@ -80,17 +82,16 @@ export default function ExploreScreen() {
       return { mode: 'start' as const, me: await getMyLocation() };
     }
     const me = await getMyLocation();
-    const [pins, businesses] = await Promise.all([
-      listNearby(me.lat, me.lng),
-      listBusinesses().catch(() => []),
-    ]);
-    return { mode: 'explore' as const, me, pins, businesses };
+    const pins = await listNearby(me.lat, me.lng);
+    return { mode: 'explore' as const, me, pins };
   }, [claimLoaded, logMode, startMode, claimedNodeId]);
   useEffect(() => {
     // Both a new tree and a continuation can choose a pin location. Claiming still
     // Claiming is independent of the location used for the eventual contribution.
     if ((data?.mode === 'start' || data?.mode === 'log') && !mapLocation) setMapLocation(data.me);
   }, [data, mapLocation]);
+  // Independent of the kindness load above: a businesses outage must not block the map.
+  const businesses = useBusinesses();
   async function submitKindness() {
     if (!description.trim() || !data || (data.mode !== 'log' && data.mode !== 'start')) return;
     setSubmitting(true);
@@ -177,8 +178,9 @@ export default function ExploreScreen() {
         <LoadState error={error} onRetry={reload} />
       ) : data.mode === 'explore' ? (
         <View style={styles.mapCard}>
-          <JoinMap pins={data.pins} me={data.me} businesses={data.businesses} onJoin={handleClaim} />
+          <JoinMap pins={data.pins} me={data.me} businesses={businesses.businesses} onJoin={handleClaim} />
           <View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>Choose a kindness marker</Text><Text style={styles.mapOverlayText}>Tap a marker to view this tree’s act</Text></View>
+          <BusinessMapStatus error={businesses.error} onRetry={businesses.reload} />
           {claiming && <View style={styles.claimingOverlay}><Text style={styles.claimingText}>Claiming node…</Text></View>}
         </View>
       ) : <LoadState empty="This kindness node is no longer available." />}

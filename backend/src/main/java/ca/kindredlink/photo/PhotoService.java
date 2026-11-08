@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,27 +26,40 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PhotoService {
 
+    private static final Logger log = LoggerFactory.getLogger(PhotoService.class);
+
     private final NodePhotoRepository photos;
     private final KindredProperties props;
     private final Clock clock; // the Clock bean, so tests can fake the time
+    private final PhotoSafetyChecker safety;
 
-    public PhotoService(NodePhotoRepository photos, KindredProperties props, Clock clock) {
+    public PhotoService(NodePhotoRepository photos, KindredProperties props, Clock clock, PhotoSafetyChecker safety) {
         this.photos = photos;
         this.props = props;
         this.clock = clock;
+        this.safety = safety;
     }
 
     /**
-     * Clean the uploaded picture and store it as PENDING. Nobody else can see it until a moderator
-     * approves it. Returns the photo's id so the app can attach it to a node.
+     * Clean the uploaded picture, screen it, and store it. The screener can approve a clearly safe
+     * photo; anything else stays PENDING for a moderator (the default when screening is off or
+     * fails). Returns the photo's id so the app can attach it to a node.
      */
     @Transactional
     public PhotoUploadResponse upload(byte[] uploaded, String deviceId) {
         // Strips hidden data (GPS, camera info), shrinks big pictures, rejects anything that isn't an image.
         byte[] cleaned = ImageCleaner.clean(uploaded);
 
-        // A new NodePhoto always starts out PENDING.
-        NodePhoto photo = photos.save(new NodePhoto(deviceId, cleaned, clock.instant()));
+        NodePhoto photo = new NodePhoto(deviceId, cleaned, clock.instant());
+        try {
+            if (safety.isSafe(cleaned)) {
+                photo.setStatus(PhotoStatus.APPROVED);
+            }
+        } catch (Exception e) {
+            // A screener bug must never block or expose an upload - pending is the safe default.
+            log.warn("Photo safety screening threw unexpectedly; leaving the photo pending");
+        }
+        photos.save(photo);
         return new PhotoUploadResponse(photo.getId(), photo.getStatus());
     }
 

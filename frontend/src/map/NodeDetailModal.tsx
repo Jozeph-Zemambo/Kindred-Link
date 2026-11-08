@@ -27,6 +27,8 @@ type NodeDetailModalProps = {
 
 export function NodeDetailModal({ nodeId, accent = palette.blue, onClose }: NodeDetailModalProps) {
   const { data: node } = useLoad(async () => (nodeId === null ? null : getNode(nodeId)), [nodeId]);
+  // useLoad keeps the previous load's data; only trust it while it matches the tapped node.
+  const current = node?.id === nodeId ? node : null;
   const onAccent = textOn(accent);
   // Navy tints go muddy fast, so tint less for it.
   const cardTint = mix(palette.cream, accent, accent === palette.navy ? 0.08 : 0.2);
@@ -36,8 +38,14 @@ export function NodeDetailModal({ nodeId, accent = palette.blue, onClose }: Node
       <Pressable style={styles.scrim} onPress={onClose}>
         <Pressable style={[styles.card, { backgroundColor: cardTint }]} onPress={() => {}}>
           <View style={[styles.photoFrame, { backgroundColor: accent }]}>
-            {node?.photoUrl ? (
-              <Image source={{ uri: assetUrl(node.photoUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+            {current?.photoUrl ? (
+              <Image
+                key={`${current.id}:${current.photoUrl}`}
+                source={{ uri: assetUrl(current.photoUrl) }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={150}
+              />
             ) : (
               <View style={styles.placeholder}>
                 <Text style={[styles.placeholderMark, { color: onAccent }]}>✦</Text>
@@ -47,12 +55,12 @@ export function NodeDetailModal({ nodeId, accent = palette.blue, onClose }: Node
           <View style={[styles.band, { backgroundColor: accent }]} />
           <View style={styles.body}>
             <View style={[styles.kickerPill, { backgroundColor: accent }]}>
-              <Text style={[styles.kicker, { color: onAccent }]}>{node?.mine ? 'YOUR ACT' : 'AN ACT OF KINDNESS'}</Text>
+              <Text style={[styles.kicker, { color: onAccent }]}>{current?.mine ? 'YOUR ACT' : 'AN ACT OF KINDNESS'}</Text>
             </View>
-            <Text style={styles.title}>{node?.description ?? ' '}</Text>
-            {node && (
+            <Text style={styles.title}>{current?.description ?? ' '}</Text>
+            {current && (
               <Text style={styles.meta}>
-                {timeAgo(node.createdAt)} · {node.depth === 0 ? 'started this chain' : `${node.depth} acts before it`}
+                {timeAgo(current.createdAt)} · {current.depth === 0 ? 'started this chain' : `${current.depth} acts before it`}
               </Text>
             )}
             <Pressable style={styles.button} onPress={onClose}>

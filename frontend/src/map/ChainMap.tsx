@@ -8,6 +8,7 @@ import { edges, hopsFrom, type GraphNode } from './graph';
 import { NodeDetailModal } from './NodeDetailModal';
 import { NodeDot } from './NodeDot';
 import { BASE_MAP, NODE_FILLS, palette } from './theme';
+import { useBusinessBubbleScale } from './useBusinessBubbleScale';
 
 // The only files that import react-native-maps are this one and JoinMap. Screens pass data in.
 
@@ -23,6 +24,12 @@ export type BusinessPin = {
   visitors?: number;
   kindnessActs?: number;
   paidForwardCents?: number;
+  /** Backend recency: ISO time of the last kindness act here, or null when never. */
+  lastKindnessAt?: string | null;
+  /** Backend recency fade, 0..1. Absent = fully visible. */
+  opacity?: number;
+  /** Display-only demo totals applied client-side; not server data. */
+  demoTotals?: boolean;
 };
 
 export type ChainMapProps = {
@@ -138,7 +145,12 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
   }, [drawIn, nodes, youId]);
   const [frontier, setFrontier] = useState(plan ? 0 : Infinity);
 
-  const initialRegion = useMemo(() => (plan ? closeRegion(plan.start) : startRegion([...nodes, ...businesses])), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Frame the chain, not the catalog: businesses only drive the camera when there are no
+  // nodes at all, so a far-away business can't zoom the user's chain off screen.
+  const cameraPoints = useMemo(() => (nodes.length ? nodes : businesses), [nodes, businesses]);
+  const initialRegion = useMemo(() => (plan ? closeRegion(plan.start) : startRegion(cameraPoints)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Zoom-responsive bubble scale via native projection (rotation-safe); states above stay put.
+  const bubbleScale = useBusinessBubbleScale(map);
 
   useEffect(() => {
     if (!plan) {
@@ -161,7 +173,7 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
       else setFrontier(Infinity);
     };
     const begin = setTimeout(() => {
-      map.current?.animateToRegion(fitRegion([...nodes, ...businesses]), duration);
+      map.current?.animateToRegion(fitRegion(cameraPoints), duration);
       frame = requestAnimationFrame(tick);
     }, DRAW_DELAY_MS);
     return () => {
@@ -188,9 +200,9 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
     });
   }, [nodes, plan, frontier]);
 
-  /** Frame every node (and business, if any) on screen, animated. */
+  /** Frame every camera point (nodes, or businesses when the chain is empty), animated. */
   const fit = () => {
-    const coords = [...nodes, ...businesses].map((p) => ({ latitude: p.lat, longitude: p.lng }));
+    const coords = cameraPoints.map((p) => ({ latitude: p.lat, longitude: p.lng }));
     if (coords.length === 1) {
       map.current?.animateToRegion({ ...coords[0], latitudeDelta: 0.006, longitudeDelta: 0.006 }, animateMap ? 700 : 0);
     } else if (coords.length > 1) {
@@ -206,17 +218,27 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
   useEffect(() => {
     if (ready.current && !plan) fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, businesses]);
+  }, [cameraPoints]);
 
   const onMapReady = () => {
     ready.current = true;
     setMapReady(true);
     if (!plan) fit();
+    bubbleScale.onMapReady();
   };
 
   return (
-    <View style={[styles.map, style]}>
-      <MapView ref={map} style={StyleSheet.absoluteFill} initialRegion={initialRegion} onMapReady={onMapReady} showsUserLocation {...BASE_MAP}>
+    <View style={[styles.map, style]} onLayout={bubbleScale.onLayout}>
+      <MapView
+        ref={map}
+        style={StyleSheet.absoluteFill}
+        initialRegion={initialRegion}
+        onMapReady={onMapReady}
+        onRegionChange={bubbleScale.onRegionChange}
+        onRegionChangeComplete={bubbleScale.onRegionChangeComplete}
+        showsUserLocation
+        {...BASE_MAP}
+      >
         {drawnEdges.map(({ key, a, b }) => (
           <Polyline
             key={key}
@@ -235,9 +257,10 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}
+            tracksViewChanges
             onPress={() => (onBusinessPress ? onBusinessPress(b.id) : setOpenBusiness(b))}
           >
-            <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} />
+            <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} mapScale={bubbleScale.mapScale} />
           </Marker>
         ))}
         {nodes.map((n) => {
