@@ -1,4 +1,10 @@
 export { ChainMap } from './ChainMap';
 export type { BusinessPin, ChainMapProps } from './ChainMap';
+export { JoinMap } from './JoinMap';
+export type { JoinMapProps, LatLngPoint } from './JoinMap';
+export { isFindable, timeLeft } from './findable';
 export { ancestors, descendants, edges, lineage } from './graph';
 export type { Edge, GraphNode } from './graph';
+export { getMyLocation } from './location';
+export type { MyLocation } from './location';
+export { JOIN_RADIUS_M, MAX_CHILDREN, PRIVACY_GRID_M } from './rules';
