@@ -8,6 +8,8 @@ import type {
   ChainTree,
   CheckinRequest,
   CheckinResult,
+  ClaimRequest,
+  ClaimResponse,
   CreateNodeRequest,
   NodeDetail,
   NodePin,
@@ -55,6 +57,15 @@ export function listMine(): Promise<NodePin[]> {
 export function getNode(id: number): Promise<NodeDetail> {
   if (USE_MOCKS) return Promise.resolve(mockNode(id));
   return request(`/api/nodes/${id}`);
+}
+
+/** Claim a nearby node before the user can post the next act. */
+export function claimNode(nodeId: number, body: ClaimRequest): Promise<ClaimResponse> {
+  if (USE_MOCKS) {
+    const claimedAt = new Date().toISOString();
+    return Promise.resolve({ claimedAt, finishBy: new Date(Date.now() + 12 * 3_600_000).toISOString() });
+  }
+  return request(`/api/nodes/${nodeId}/claim`, post(body));
 }
 
 /** Start a brand-new chain at my current GPS fix. */

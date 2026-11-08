@@ -7,7 +7,7 @@ export function BottomNav({ active }: { active: BottomNavTab }) {
   const tabs = [
     { key: 'home' as const, icon: '⌂', label: 'Home', path: '/' },
     { key: 'explore' as const, icon: '◌', label: 'Explore', path: '/explore' },
-    { key: 'trees' as const, icon: '⌁', label: 'My trees', path: '/trees' },
+    { key: 'trees' as const, icon: '⌁', label: 'My tree', path: '/trees' },
     { key: 'profile' as const, icon: '○', label: 'Profile', path: '/settings' },
   ];
 
