@@ -1,6 +1,8 @@
 package ca.kindredlink.node;
 
-import ca.kindredlink.common.DeviceId;
+import ca.kindredlink.auth.AuthenticatedAccount;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.server.ResponseStatusException;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import ca.kindredlink.node.NodeDtos.NodePin;
@@ -34,28 +36,29 @@ public class NodeController {
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5000") double radius,
             @RequestParam(defaultValue = "false") boolean mine,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.listPins(lat, lng, radius, mine, deviceId);
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        if (mine && account == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
+        return service.listPins(lat, lng, radius, mine, account == null ? null : account.identity());
     }
 
     @GetMapping("/{id}")
     public NodeDetail get(@PathVariable Long id,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.get(id, deviceId);
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        return service.get(id, account == null ? null : account.identity());
     }
 
     /** Start a brand-new chain. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail create(@Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(DeviceId.HEADER) String deviceId) {
-        return service.createRoot(req, deviceId);
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        return service.createRoot(req, account.identity());
     }
 
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(DeviceId.HEADER) String deviceId) {
-        return service.continueChain(id, req, deviceId);
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        return service.continueChain(id, req, account.identity());
     }
 }
