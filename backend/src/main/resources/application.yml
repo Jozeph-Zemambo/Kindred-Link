@@ -36,6 +36,8 @@ kindred:
   chain:
     # A chain with open slots but no new link for this long is "Quiet" instead of "Active".
     quiet-after-hours: 3
+    # Hard stop: this many days after a chain's first node, nobody can claim or add links to it.
+    max-days: 7
   privacy:
     # Public pins are snapped to a grid of this size, then jittered inside the cell.
     grid-meters: 250

@@ -16,7 +16,7 @@ public record KindredProperties(
 
     public record Continue(double maxDistanceMeters) {}
 
-    public record Chain(int quietAfterHours) {}
+    public record Chain(int quietAfterHours, int maxDays) {}
 
     public record Privacy(double gridMeters) {}
 
