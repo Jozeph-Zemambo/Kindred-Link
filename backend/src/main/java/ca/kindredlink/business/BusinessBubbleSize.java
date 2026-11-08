@@ -13,12 +13,12 @@ public final class BusinessBubbleSize {
         if (visitors < 0) {
             throw new IllegalArgumentException("visitors must not be negative");
         }
-        if (visitors <= 500) {
-            return 1.0 + visitors / 100.0;
+        if (visitors <= 50) {
+            return 1.0 + visitors / 10.0;
         }
-        long remaining = visitors - 500;
-        long bracketWidth = 500;
-        double denominator = 200.0;
+        long remaining = visitors - 50;
+        long bracketWidth = 50;
+        double denominator = 20.0;
         double diameter = 6.0;
         while (remaining > bracketWidth) {
             remaining -= bracketWidth;

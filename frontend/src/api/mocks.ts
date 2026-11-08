@@ -96,6 +96,7 @@ export function mockPins(onlyMine: boolean): NodePin[] {
 
 /** A few acts with photos (placeholder images, mixed shapes) to exercise the 4:3 crop. */
 const MOCK_PHOTOS: Record<number, string> = {
+  6: 'https://picsum.photos/seed/kindred-wallet/1000/750',
   5: 'https://picsum.photos/seed/kindred-lunch/900/1200',
   7: 'https://picsum.photos/seed/kindred-gloves/1200/700',
   111: 'https://picsum.photos/seed/kindred-snow/1000/1000',
@@ -155,4 +156,12 @@ export const mockRecap: Recap = {
   week: '2026-W45',
   longestChains: [pick(mockLine, [10, 11, 12, 13]), pick(mockNet, [1, 3, 5, 7]), pick(mockNet, [1, 3, 6])],
   largestNets: [mockNet, mockLine],
+  totalTrees: 4,
+  totalActs: 19,
+  moments: [
+    // Node 3 is the user's contribution; these are descendant acts in that same tree.
+    { id: 6, chainId: 1, description: 'Returned a lost wallet', photoUrl: MOCK_PHOTOS[6], createdAt: mockNode(6).createdAt },
+    { id: 5, chainId: 1, description: 'Bought lunch for a classmate', photoUrl: MOCK_PHOTOS[5], createdAt: mockNode(5).createdAt },
+    { id: 7, chainId: 1, description: 'Gave away spare winter gloves', photoUrl: MOCK_PHOTOS[7], createdAt: mockNode(7).createdAt },
+  ],
 };

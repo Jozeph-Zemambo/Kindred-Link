@@ -8,15 +8,18 @@ import ca.kindredlink.node.NodeRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Seeds an empty database with a few chains and businesses around UCalgary so the map isn't blank.
+ * Seeds an empty database with a few chains and businesses around Calgary so the map isn't blank.
  * Turn off with kindred.seed-demo-data=false. Seeded authors use "demo-*" device ids, so your
- * phone can continue any of them.
+ * phone can continue any of them. Business locations, names, and logos were provided by the
+ * demo owner for simulation purposes only - they are not geocoder-verified and imply no
+ * partnership. Participation starts at zero.
  */
 @Component
 public class DemoData implements ApplicationRunner {
@@ -55,9 +58,13 @@ public class DemoData implements ApplicationRunner {
         KindnessNode old = root("demo-gus", "Gave away spare winter gloves", 51.0700, -114.1200, now.minus(hours(40)));
         child(old, "demo-hal", "Paid a parking meter about to expire", 51.0712, -114.1185, now.minus(hours(35)));
 
-        businesses.save(new Business("Bean There Café", null, 51.0795, -114.1298, "demo-bean-there"));
-        businesses.save(new Business("Corner Grocer", null, 51.0765, -114.1325, "demo-corner-grocer"));
-        businesses.save(new Business("Page Turner Books", null, 51.0812, -114.1350, "demo-page-turner"));
+        // User-provided demo businesses; QR tokens are random so they cannot be guessed.
+        businesses.save(new Business("Cinnzeo Bakery Cafe",
+                "/images/businesses/cinnzeo-bakery-cafe.png",
+                51.07923, -114.127219, UUID.randomUUID().toString()));
+        businesses.save(new Business("Lotus Fine Indian Cuisine - Charleswood",
+                "/images/businesses/lotus-charleswood.png",
+                51.087303, -114.109781, UUID.randomUUID().toString()));
     }
 
     private KindnessNode root(String device, String text, double lat, double lng, Instant at) {

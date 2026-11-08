@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business bubble lab - Kindred-Link</title>
+  <link rel="stylesheet" href="./vendor/leaflet.css">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./phone-preview.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <h1>Business bubble lab</h1>
+      <p>Businesses and starting counts load from the backend; edits and recency are
+        local simulation - nothing is written back. Address search goes through the
+        app's own geocoding endpoint.</p>
+    </div>
+    <div class="view-toggle" role="group" aria-label="View mode">
+      <button type="button" id="viewLab" aria-pressed="true">Map lab</button>
+      <button type="button" id="viewPhone" aria-pressed="false">Phone preview</button>
+    </div>
+  </header>
+
+  <main class="lab">
+    <section class="canvas-wrap" aria-label="Map canvas">
+      <div class="map-toolbar">
+        <label class="check"><input type="checkbox" id="clusterBusinesses" checked>
+          Cluster nearby businesses</label>
+        <span class="hint">Nearby groups are limited to 200 m &times;
+          population weight. Zoom in to explore individual businesses.</span>
+        <output class="readout" id="bubbleCount" hidden></output>
+      </div>
+      <div class="map-toolbar catalog">
+        <label for="catalogApiBase">Business API base</label>
+        <input id="catalogApiBase" type="url" required>
+        <button type="button" id="catalogReload">Reload businesses</button>
+        <span class="hint" id="catalogStatus" aria-live="polite"></span>
+      </div>
+      <div class="phone-shell">
+        <div class="phone-status" aria-hidden="true">
+          <span class="phone-time">9:41</span>
+          <span class="phone-icons"><i class="sig"></i><i class="batt"></i></span>
+        </div>
+        <div class="phone-appbar">
+          <div class="phone-title">
+            <strong>Kindred Link</strong>
+            <span class="phone-sub">Nearby kindness</span>
+          </div>
+          <span class="phone-badge">Demo / Calgary</span>
+        </div>
+        <div class="map" id="map"></div>
+        <div class="phone-guide">
+          <strong>Explore partner businesses</strong>
+          <span>Zoom in or tap a group to explore businesses.</span>
+          <span class="phone-legend" aria-hidden="true"><i class="swatch fresh"></i>Fresh
+            <i class="swatch recent"></i>Recent <i class="swatch cooling"></i>Cooling
+            <i class="swatch quiet"></i>Quiet</span>
+        </div>
+      </div>
+      <p class="error map-status" id="mapStatus" role="alert" hidden></p>
+      <p class="caption">Circles show participation, not verified service area.
+        Geographic diameter = units x meters-per-unit - zooming in/out makes
+        circles look bigger/smaller while their physical diameter is unchanged.
+        Color vibrancy and fade simulate kindness recency - ordinary scans
+        never refresh it. Business locations and logos load from the app's
+        business API; edits and activity are simulated locally and nothing
+        is written back.</p>
+    </section>
+
+    <aside class="controls" aria-label="Simulation controls">
+      <h2>Businesses</h2>
+      <ul class="business-list" id="businessList"></ul>
+
+      <section class="panel" aria-labelledby="selectedHeading">
+        <h2 id="selectedHeading">Selected: <span id="selectedName"></span></h2>
+        <p class="hint">Location: <span id="locationLabel">Example location</span></p>
+        <p class="readout coords" id="coordsReadout"></p>
+        <button type="button" id="locateBusiness">Locate business</button>
+
+        <div class="field">
+          <label for="visitorsInput">Unique visitors (0-1,000,000)</label>
+          <input id="visitorsInput" type="number" min="0" max="1000000" step="1"
+                 inputmode="numeric" aria-describedby="visitorsError">
+          <p id="visitorsError" class="error" role="alert" hidden></p>
+        </div>
+
+        <div class="btn-row" aria-label="Quick add visitors">
+          <button type="button" id="add1">+1</button>
+          <button type="button" id="add100">+100</button>
+          <button type="button" id="add500">+500</button>
+        </div>
+
+        <p class="readout" id="sizeReadout" aria-live="polite"></p>
+        <p class="formula">Diameter units: <code>1 + visitors/10</code> up to 50;
+          beyond that, brackets double in width (50, 100, 200, ...) and each
+          adds +2.5 units, so growth halves per bracket.</p>
+      </section>
+
+      <section class="panel geocoder" id="geocoderPanel" aria-label="Address search"></section>
+
+      <section class="panel activity" id="activityPanel" aria-label="Activity simulation"></section>
+
+      <div class="field">
+        <label for="metersPerUnitSlider">Meters per diameter unit:
+          <output id="metersPerUnitValue" for="metersPerUnitSlider">5</output></label>
+        <input id="metersPerUnitSlider" type="range" min="5" max="100" step="5" value="5">
+      </div>
+
+      <button type="button" class="reset" id="reset">Reset simulation</button>
+    </aside>
+  </main>
+
+  <script src="./vendor/leaflet.js"></script>
+  <script type="module" src="./simulation.mjs"></script>
+</body>
+</html>
