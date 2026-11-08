@@ -6,7 +6,6 @@ import { listMine } from '@/api/client';
 import { API_URL, USE_MOCKS } from '@/api/config';
 import { getDeviceId, resetDeviceId } from '@/api/deviceId';
 import { useAuth0Account } from '@/auth/useAuth0Account';
-import { BottomNav } from '@/components/BottomNav';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 
@@ -91,7 +90,6 @@ export default function SettingsScreen() {
           <Text style={styles.debug}>Anonymous id: {data.deviceId}{'\n'}API: {USE_MOCKS ? 'mock data' : API_URL}</Text>
         </>}
       </ScrollView>
-      <BottomNav active="profile" />
     </SafeAreaView>
   );
 }

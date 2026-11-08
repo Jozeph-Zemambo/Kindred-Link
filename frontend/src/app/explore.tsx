@@ -10,7 +10,6 @@ import { claimNode, continueNode, createNode, getNode, listBusinesses, listNearb
 import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
-import { BottomNav } from '@/components/BottomNav';
 import { getMyLocation, JoinMap, LocationPicker, requireMyLocation } from '@/map';
 
 const ACTIVE_CLAIM_KEY = '@kindred-link/active-claim';
@@ -174,7 +173,6 @@ export default function ExploreScreen() {
         </View>
       ) : <LoadState empty="This kindness node is no longer available." />}
       {!logMode && !startMode && data?.mode === 'explore' && <Pressable style={styles.newTreeButton} onPress={() => router.replace({ pathname: '/explore', params: { mode: 'start' } })}><Text style={styles.newTreeButtonText}>Start a new tree instead</Text></Pressable>}
-      <BottomNav active="explore" />
     </SafeAreaView>
   );
 }

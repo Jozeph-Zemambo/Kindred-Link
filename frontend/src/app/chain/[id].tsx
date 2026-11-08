@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getChain, getNode } from '@/api/client';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
-import { BottomNav } from '@/components/BottomNav';
 import { ChainMap, lineage } from '@/map';
 
 // Full chain for one node: every act above it (to the start) and every act below it.
@@ -27,7 +26,6 @@ export default function ChainScreen() {
       ) : (
         <ChainMap nodes={data.nodes} focusId={nodeId} />
       )}
-      <BottomNav active="trees" />
     </SafeAreaView>
   );
 }

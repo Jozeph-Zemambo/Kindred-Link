@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-export type BottomNavTab = 'home' | 'explore' | 'trees' | 'profile';
+export type BottomNavTab = 'home' | 'explore' | 'trees' | 'profile' | 'recap';
 
 const NAVY = '#303A59';
 const TANGERINE = '#F49A68';
