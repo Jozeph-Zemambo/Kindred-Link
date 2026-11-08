@@ -3,7 +3,7 @@ import { getDeviceId } from './deviceId';
 import { getClerkSessionToken } from '@/auth/token';
 import { ancestors, descendants } from '@/map/graph';
 
-import { mockBusinesses, mockChain, mockContinueNode, mockCreateNode, mockNode, mockPins, mockStats } from './mocks';
+import { mockBusinesses, mockChain, mockContinueNode, mockCreateNode, mockNode, mockPins, mockRecap, mockStats } from './mocks';
 import type {
   ApiProblem,
   BusinessHub,
@@ -129,10 +129,12 @@ export function checkin(businessId: number, body: CheckinRequest): Promise<Check
   return request(`/api/businesses/${businessId}/checkin`, post(body));
 }
 
-/** Weekly recap. Until the backend adds GET /api/me/recap, the app builds it from my nodes and their trees. */
+/** Weekly recap for the most recently completed kindness period. */
 export function getRecap(week?: string): Promise<Recap> {
-  if (USE_MOCKS || !RECAP_ENDPOINT_READY) return buildRecap();
-  return request(`/api/me/recap${week ? `?week=${week}` : ''}`);
+  const recapWeek = week ?? isoWeek(previousPeriodStart());
+  if (USE_MOCKS) return Promise.resolve({ ...mockRecap, week: recapWeek });
+  if (!RECAP_ENDPOINT_READY) return buildRecap();
+  return request(`/api/me/recap?week=${recapWeek}`);
 }
 
 /** Monday 00:00 local time: the start of the current kindness period (same window as Home). */
@@ -140,6 +142,13 @@ function periodStart(now = new Date()): Date {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+/** The recap covers the completed period immediately before the current one. */
+function previousPeriodStart(now = new Date()): Date {
+  const start = periodStart(now);
+  start.setDate(start.getDate() - 7);
   return start;
 }
 
@@ -165,8 +174,12 @@ function longestDown(nodes: ChainNode[], id: number): ChainNode[] {
 const MAX_MOMENT_LOOKUPS = 12;
 
 async function buildRecap(): Promise<Recap> {
-  const start = periodStart();
-  const mine = (await listMine()).filter((n) => Date.parse(n.createdAt) >= start.getTime());
+  const start = previousPeriodStart();
+  const end = periodStart();
+  const mine = (await listMine()).filter((n) => {
+    const createdAt = Date.parse(n.createdAt);
+    return createdAt >= start.getTime() && createdAt < end.getTime();
+  });
   const trees = await Promise.all([...new Set(mine.map((n) => n.chainId))].map((id) => getChain(id)));
   const treeOf = (chainId: number) => trees.find((t) => t.chainId === chainId)!;
 

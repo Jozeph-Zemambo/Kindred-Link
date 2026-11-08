@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@clerk/expo';
 
 import { getChain, listBusinesses, listMine, listNearby } from '@/api/client';
+import { USE_MOCKS } from '@/api/config';
 import { isClerkConfigured } from '@/auth/clerk';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
@@ -183,17 +184,21 @@ export default function HomeScreen() {
   const visibleTrees = data?.trees.slice(0, 1) ?? [];
   // Same pins the join map draws, so the count matches the dots.
   const openNearby = data?.nearbyPins.filter(isFindable).length ?? 0;
-  const hasPeriodActivity = Boolean(data?.mine.some((node) => {
+  const previousPeriodStart = new Date(period.start);
+  previousPeriodStart.setDate(previousPeriodStart.getDate() - 7);
+  const hasPreviousPeriodActivity = Boolean(data?.mine.some((node) => {
     const createdAt = Date.parse(node.createdAt);
-    return createdAt >= period.start.getTime() && createdAt < period.end.getTime();
+    return createdAt >= previousPeriodStart.getTime() && createdAt < period.start.getTime();
   }));
-  const recapViewKey = `kindred.recap.viewed.${period.start.getFullYear()}-${period.start.getMonth() + 1}-${period.start.getDate()}`;
+  // Mock mode has a curated sample recap even though its demo timestamps are recent.
+  const hasRecap = USE_MOCKS || hasPreviousPeriodActivity;
+  const recapViewKey = `kindred.recap.viewed.${previousPeriodStart.getFullYear()}-${previousPeriodStart.getMonth() + 1}-${previousPeriodStart.getDate()}`;
   const [recapViewed, setRecapViewed] = useState(false);
 
   useEffect(() => {
-    if (!hasPeriodActivity) return;
+    if (!hasRecap) return;
     AsyncStorage.getItem(recapViewKey).then((value) => setRecapViewed(value === '1')).catch(() => undefined);
-  }, [hasPeriodActivity, recapViewKey]);
+  }, [hasRecap, recapViewKey]);
 
   const markRecapViewed = useCallback(() => {
     setRecapViewed(true);
@@ -205,7 +210,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}><View><Text style={styles.eyebrow}>YOUR KINDNESS, IN MOTION</Text><Text style={styles.greeting}>{getGreeting(new Date(now).getHours())}</Text>{isClerkConfigured ? <ClerkDisplayName /> : <Text style={styles.displayName}>Kind human</Text>}</View><Pressable style={styles.profileButton} onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open profile">{isClerkConfigured ? <ClerkProfileInitial /> : <Text style={styles.profileInitial}>K</Text>}</Pressable></View>
 
-        <HeroCarousel hasRecap={hasPeriodActivity} recapViewed={recapViewed} onRecapViewed={markRecapViewed} />
+        <HeroCarousel hasRecap={hasRecap} recapViewed={recapViewed} onRecapViewed={markRecapViewed} />
 
         <View style={styles.metricsCard}><Metric value={metrics.acts} label="acts completed" accent={COLORS.tangerine} /><Metric value={metrics.affected} label="people affected" accent={COLORS.blue} /><Metric value={metrics.reach} label="nodes growing" accent={COLORS.yellow} /></View>
         <View style={styles.periodCard}><View style={styles.periodHeader}><View><Text style={styles.periodTitle}>Current kindness period</Text><Text style={styles.periodSubtitle}>Ends {formatPeriodEnd(period.end)}</Text></View><Text style={styles.periodRemaining}>{formatTimeLeft(period.end.toISOString(), now)}</Text></View><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${period.progress * 100}%` }]} /></View></View>
