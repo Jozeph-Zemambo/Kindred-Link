@@ -9,6 +9,8 @@ import ca.kindredlink.node.NodeDtos.NodePin;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,14 +38,16 @@ public class NodeController {
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5000") double radius,
             @RequestParam(defaultValue = "false") boolean mine,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.listPins(lat, lng, radius, mine, deviceId);
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.listPins(lat, lng, radius, mine, DeviceId.resolveOptional(principal, deviceId));
     }
 
     @GetMapping("/{id}")
     public NodeDetail get(@PathVariable Long id,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.get(id, deviceId);
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.get(id, DeviceId.resolveOptional(principal, deviceId));
     }
 
     /** Start a brand-new chain. */
@@ -52,8 +56,9 @@ public class NodeController {
     public NodeDetail create(@Valid @RequestBody CreateNodeRequest req,
             // required = false so Spring doesn't reject a missing header first; DeviceId.require
             // then gives the clear "bad_device_id" error instead of a generic 400.
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.createRoot(req, DeviceId.require(deviceId));
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.createRoot(req, DeviceId.resolve(principal, deviceId));
     }
 
     /** Reserve one of the node's two slots. Returns the deadline to finish your act. */
@@ -61,15 +66,17 @@ public class NodeController {
     @ResponseStatus(HttpStatus.CREATED)                // answer with 201
     public ClaimResponse claim(@PathVariable Long id,  // the 5 from the URL
             @Valid @RequestBody ClaimRequest req,      // JSON body with lat/lng, validated
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {  // who is asking
-        return service.claim(id, req, DeviceId.require(deviceId));  // all the rules live in the service
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.claim(id, req, DeviceId.resolve(principal, deviceId));
     }
 
     /** Post your act as the next link. You must have claimed this node first. */
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.continueChain(id, req, DeviceId.require(deviceId));
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.continueChain(id, req, DeviceId.resolve(principal, deviceId));
     }
 }

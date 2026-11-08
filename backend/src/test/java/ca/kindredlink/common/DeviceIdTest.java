@@ -1,9 +1,11 @@
 package ca.kindredlink.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 /** Plain unit tests (no Spring), so they run instantly. */
 class DeviceIdTest {
@@ -42,5 +44,18 @@ class DeviceIdTest {
     void tooLongIdIsRejected() {
         assertEquals("bad_device_id", errorCodeFor("a".repeat(101)));
         assertEquals("a".repeat(100), DeviceId.require("a".repeat(100))); // exactly 100 is fine
+    }
+
+    @Test
+    void authenticatedSubjectOverridesClientSuppliedDeviceId() {
+        Jwt principal = Jwt.withTokenValue("token").header("alg", "RS256").subject("user_clerk123").build();
+        assertEquals("user_clerk123", DeviceId.resolve(principal, "forged-device-id"));
+    }
+
+    @Test
+    void anonymousRequestsKeepUsingTheirDeviceId() {
+        assertEquals("device-123", DeviceId.resolve(null, "device-123"));
+        assertEquals("device-123", DeviceId.resolveOptional(null, "device-123"));
+        assertNull(DeviceId.resolveOptional(null, null));
     }
 }

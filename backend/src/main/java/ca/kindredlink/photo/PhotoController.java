@@ -10,6 +10,8 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,8 +44,9 @@ public class PhotoController {
     public PhotoUploadResponse upload(
             @RequestPart("file") MultipartFile file, // the picture itself
             // required = false so our own clear "bad_device_id" error shows up, not a generic 400
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) throws IOException {
-        return service.upload(file.getBytes(), DeviceId.require(deviceId));
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) throws IOException {
+        return service.upload(file.getBytes(), DeviceId.resolve(principal, deviceId));
     }
 
     /**

@@ -7,6 +7,8 @@ import ca.kindredlink.common.DeviceId;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +36,8 @@ public class BusinessController {
     @PostMapping("/{id}/checkin")
     @ResponseStatus(HttpStatus.CREATED)
     public CheckinResult checkin(@PathVariable Long id, @Valid @RequestBody CheckinRequest req,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.checkin(id, req, DeviceId.require(deviceId));
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId,
+            @AuthenticationPrincipal Jwt principal) {
+        return service.checkin(id, req, DeviceId.resolve(principal, deviceId));
     }
 }

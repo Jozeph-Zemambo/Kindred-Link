@@ -1,5 +1,6 @@
 import { API_URL, RECAP_ENDPOINT_READY, USE_MOCKS } from './config';
 import { getDeviceId } from './deviceId';
+import { getClerkSessionToken } from '@/auth/token';
 import { ancestors, descendants } from '@/map/graph';
 
 import { mockBusinesses, mockChain, mockNode, mockPins, mockStats } from './mocks';
@@ -29,12 +30,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await getClerkSessionToken();
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       'X-Device-Id': await getDeviceId(),
       ...init.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   if (!res.ok) {
@@ -68,9 +71,13 @@ export async function uploadPhoto(uri: string): Promise<PhotoUploadResponse> {
   if (USE_MOCKS) return { id: 1, status: 'PENDING' };
   const form = new FormData();
   form.append('file', { uri, name: `kindred-${Date.now()}.jpg`, type: 'image/jpeg' } as unknown as Blob);
+  const token = await getClerkSessionToken();
   const res = await fetch(`${API_URL}/api/photos`, {
     method: 'POST',
-    headers: { 'X-Device-Id': await getDeviceId() },
+    headers: {
+      'X-Device-Id': await getDeviceId(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: form,
   });
   if (!res.ok) {
