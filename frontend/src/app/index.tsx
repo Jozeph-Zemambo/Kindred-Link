@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUser } from '@clerk/expo';
 
 import { getChain, listMine, listNearby } from '@/api/client';
+import { isClerkConfigured } from '@/auth/clerk';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 import { descendants, getMyLocation, isFindable, JoinMap } from '@/map';
@@ -34,6 +36,18 @@ function getGreeting(hour: number) {
   return 'Good evening';
 }
 
+function ClerkDisplayName() {
+  const { user } = useUser();
+  const name = user?.firstName ?? user?.fullName?.trim().split(/\s+/)[0] ?? 'Kind human';
+  return <Text style={styles.displayName}>{name}</Text>;
+}
+
+function ClerkProfileInitial() {
+  const { user } = useUser();
+  const name = user?.firstName ?? user?.fullName?.trim().split(/\s+/)[0] ?? 'K';
+  return <Text style={styles.profileInitial}>{name.slice(0, 1).toUpperCase()}</Text>;
+}
+
 function getPeriodWindow(now: number) {
   const end = new Date(now);
   const day = end.getDay();
@@ -61,7 +75,7 @@ function ActionButton({ label, onPress, primary = false }: { label: string; onPr
 function HeroCarousel({ hasRecap, recapViewed, onRecapViewed }: { hasRecap: boolean; recapViewed: boolean; onRecapViewed: () => void }) {
   const { width } = useWindowDimensions();
   const slideWidth = Math.max(1, width - 40);
-  const carousel = useRef<ScrollView>(null);
+  const carousel = useRef<ScrollViewInstance>(null);
   const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
@@ -184,7 +198,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}><View><Text style={styles.eyebrow}>YOUR KINDNESS, IN MOTION</Text><Text style={styles.greeting}>{getGreeting(new Date(now).getHours())}</Text><Text style={styles.displayName}>Kind human</Text></View><Pressable style={styles.profileButton} onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open profile"><Text style={styles.profileInitial}>K</Text></Pressable></View>
+        <View style={styles.header}><View><Text style={styles.eyebrow}>YOUR KINDNESS, IN MOTION</Text><Text style={styles.greeting}>{getGreeting(new Date(now).getHours())}</Text>{isClerkConfigured ? <ClerkDisplayName /> : <Text style={styles.displayName}>Kind human</Text>}</View><Pressable style={styles.profileButton} onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open profile">{isClerkConfigured ? <ClerkProfileInitial /> : <Text style={styles.profileInitial}>K</Text>}</Pressable></View>
 
         <HeroCarousel hasRecap={hasPeriodActivity} recapViewed={recapViewed} onRecapViewed={markRecapViewed} />
 

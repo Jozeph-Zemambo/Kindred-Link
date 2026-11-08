@@ -2,10 +2,11 @@ package ca.kindredlink.common;
 
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
- * There are no accounts yet. Each install generates a random id and sends it as this header,
- * which is enough to answer "which nodes are mine". Swap for real auth later.
+ * Anonymous installs use a random device id. When Clerk is enabled, authenticated requests use
+ * the verified Clerk subject instead; a client-supplied device id never overrides that identity.
  */
 public final class DeviceId {
     public static final String HEADER = "X-Device-Id";
@@ -27,5 +28,16 @@ public final class DeviceId {
                     "Send an " + HEADER + " header of 1-100 letters, digits, or . _ : -");
         }
         return raw;
+    }
+
+    public static String resolve(Jwt principal, String anonymousId) {
+        return principal == null ? require(anonymousId) : principal.getSubject();
+    }
+
+    public static String resolveOptional(Jwt principal, String anonymousId) {
+        if (principal != null) {
+            return principal.getSubject();
+        }
+        return anonymousId == null ? null : require(anonymousId);
     }
 }

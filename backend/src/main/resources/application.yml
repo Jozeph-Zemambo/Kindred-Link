@@ -26,6 +26,12 @@ spring:
 server:
   port: 8080
 
+clerk:
+  # Enable to require verified Clerk sessions for API writes and private "mine" requests.
+  enabled: ${CLERK_ENABLED:false}
+  issuer: ${CLERK_ISSUER:}
+  jwks-uri: ${CLERK_JWKS_URI:}
+
 springdoc:
   swagger-ui:
     path: /docs
