@@ -56,15 +56,17 @@ public class NodeService {
         // Two batch lookups (one query each) instead of one query per pin.
         Map<Long, Long> childCounts = childCounts(found);
         Map<Long, Long> claimCounts = claimCounts(found);
+        Map<Long, Instant> chainEnds = chainEnds(found); // 7-day hard stop per chain, one query
         Instant now = clock.instant();
         return found.stream()
                 .map(n -> {
                     long children = childCounts.getOrDefault(n.getId(), 0L);
                     long claimed = claimCounts.getOrDefault(n.getId(), 0L);
+                    Instant chainEnd = chainEnds.get(n.getChainId());
                     return new NodePin(
                             n.getId(), n.getChainId(), n.getParentId(), n.getApproxLat(), n.getApproxLng(),
-                            rules.openSlots(n, usedSlots(claimed, children), now),
-                            n.getCreatedAt(), rules.closesAt(n), n.getPhotoUrl() != null,
+                            rules.openSlots(n, rules.usedSlots(claimed, children), now, chainEnd),
+                            n.getCreatedAt(), rules.closesAt(n, chainEnd), n.getPhotoUrl() != null,
                             Objects.equals(n.getAuthorDeviceId(), deviceId),
                             (int) children);
                 })
@@ -102,6 +104,10 @@ public class NodeService {
                 .orElseThrow(() -> ApiException.notFound("Node", parentId));
         Instant now = clock.instant(); // the Clock bean, so tests can fake the time
 
+        // Rule: the whole chain must still be open (7-day hard stop). We keep the chain's end time
+        // so the finish deadline below can never run past it.
+        Instant chainEnd = requireChainOpen(parent, now);
+
         // Rule: you can't claim your own act of kindness.
         if (parent.getAuthorDeviceId().equals(deviceId)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "own_node", "You can't claim your own act of kindness");
@@ -115,8 +121,8 @@ public class NodeService {
         // an abandoned slot stay closed.
         boolean windowClosed = !now.isBefore(rules.closesAt(parent));
         // A slot is used if someone claimed it OR a child already exists (demo data has children but
-        // no claims). usedSlots() is the same helper the map pins use, so the pin and this rule agree.
-        long used = usedSlots(claims.countByNodeId(parentId), nodes.countByParentId(parentId));
+        // no claims). rules.usedSlots() is the same helper the map pins use, so the pin and this rule agree.
+        long used = rules.usedSlots(claims.countByNodeId(parentId), nodes.countByParentId(parentId));
         boolean noSlotsLeft = used >= props.node().maxChildren();
         if (windowClosed || noSlotsLeft) {
             throw new ApiException(HttpStatus.CONFLICT, "slot_closed",
@@ -130,9 +136,13 @@ public class NodeService {
                     "You need to be within " + (int) max + " m of this node to claim it");
         }
 
-        // All rules passed: save the claim and tell the app the finish deadline.
+        // All rules passed: save the claim and tell the app the finish deadline. That's 12 h from now,
+        // unless the chain's 7-day hard stop comes first, so the app never promises time that
+        // doesn't exist.
         claims.save(new NodeClaim(parentId, deviceId, now));
-        return new ClaimResponse(now, now.plus(Duration.ofHours(props.node().openHours())));
+        Instant twelveHoursFromNow = now.plus(Duration.ofHours(props.node().openHours()));
+        Instant finishBy = twelveHoursFromNow.isBefore(chainEnd) ? twelveHoursFromNow : chainEnd;
+        return new ClaimResponse(now, finishBy);
     }
 
     /**
@@ -145,6 +155,9 @@ public class NodeService {
         KindnessNode parent = nodes.findByIdForUpdate(parentId)
                 .orElseThrow(() -> ApiException.notFound("Node", parentId));
         Instant now = clock.instant();
+
+        // Rule: the whole chain must still be open (7-day hard stop), even if you hold a claim.
+        requireChainOpen(parent, now);
 
         // Did this person actually claim a slot? If not, they can't post yet.
         NodeClaim claim = claims.findByNodeIdAndDeviceId(parentId, deviceId)
@@ -179,6 +192,22 @@ public class NodeService {
         return toDetail(child, deviceId);
     }
 
+    /**
+     * Hard stop: a chain stops accepting links 7 days after its first (root) node, even if people
+     * are still linking. Throws chain_ended if that moment has passed; otherwise returns it, so
+     * claim() can cap its finish deadline. Every node stores its chain's root id in chainId.
+     */
+    private Instant requireChainOpen(KindnessNode node, Instant now) {
+        KindnessNode root = nodes.findById(node.getChainId())
+                .orElseThrow(() -> ApiException.notFound("Chain", node.getChainId()));
+        Instant chainEnd = rules.chainEndsAt(root);
+        if (!now.isBefore(chainEnd)) {
+            throw new ApiException(HttpStatus.CONFLICT, "chain_ended",
+                    "This chain has ended (" + props.chain().maxDays() + " day limit)");
+        }
+        return chainEnd;
+    }
+
     private KindnessNode newNode(Long chainId, Long parentId, int depth, CreateNodeRequest req, String deviceId) {
         Geo.LatLng approx = Geo.approximate(req.lat(), req.lng(), props.privacy().gridMeters());
         return new KindnessNode(chainId, parentId, depth, deviceId, req.description().strip(), req.photoUrl(),
@@ -189,20 +218,27 @@ public class NodeService {
         List<Long> childIds = nodes.findByParentIdOrderByCreatedAtAsc(n.getId()).stream()
                 .map(KindnessNode::getId)
                 .toList();
+        // The chain's 7-day hard stop, from its root (for a root node, the root is itself).
+        KindnessNode root = n.isRoot() ? n : nodes.findById(n.getChainId())
+                .orElseThrow(() -> ApiException.notFound("Chain", n.getChainId()));
+        Instant chainEnd = rules.chainEndsAt(root);
         return new NodeDetail(
                 n.getId(), n.getChainId(), n.getParentId(), n.getDepth(), n.getDescription(), n.getPhotoUrl(),
                 n.getApproxLat(), n.getApproxLng(),
-                rules.openSlots(n, usedSlots(claims.countByNodeId(n.getId()), childIds.size()), clock.instant()),
-                n.getCreatedAt(), rules.closesAt(n), childIds, Objects.equals(n.getAuthorDeviceId(), deviceId));
+                rules.openSlots(n, rules.usedSlots(claims.countByNodeId(n.getId()), childIds.size()),
+                        clock.instant(), chainEnd),
+                n.getCreatedAt(), rules.closesAt(n, chainEnd), childIds,
+                Objects.equals(n.getAuthorDeviceId(), deviceId));
     }
 
     /**
-     * How many of a node's slots are used up. A claim uses a slot, finished or not. We take the
-     * bigger of claims and children because the demo seed data has children but no claims, and
-     * those old demo nodes shouldn't look open.
+     * Each chain's 7-day end time, keyed by chainId, for a list of nodes. Loads all the roots in
+     * one query (a root's id is its chainId) instead of one lookup per pin.
      */
-    private static long usedSlots(long claimed, long children) {
-        return Math.max(claimed, children);
+    Map<Long, Instant> chainEnds(List<KindnessNode> found) {
+        List<Long> chainIds = found.stream().map(KindnessNode::getChainId).distinct().toList();
+        return nodes.findAllById(chainIds).stream()
+                .collect(Collectors.toMap(KindnessNode::getId, rules::chainEndsAt));
     }
 
     /** Claim counts for many nodes in one query. Nodes with no claims are missing from the map. */

@@ -101,6 +101,9 @@ A node has 2 slots. To add a child, a person first **claims** a slot, then **con
 - A node can be claimed for 12 h after it was created. After that, any unclaimed slot is closed for good.
 - Each claim gets a fresh 12 h from the moment of the claim (`finishBy` in the claim response).
 - A claim uses up its slot even if the person never finishes. An abandoned slot is never given to someone else.
+- **7-day hard stop:** a chain stops accepting links 7 days after its first node, even if people are still
+  linking (`kindred.chain.max-days`). A claim's `finishBy`, and every pin's `closesAt` and `openSlots`
+  (map pins, node details, chain map), never run past that moment.
 - You can't claim your own node, can't claim the same node twice, and must be within the allowed distance
   (checked on the server using the real GPS fix) when you claim and when you continue.
 
@@ -113,6 +116,7 @@ Error codes (the `title` field of the error JSON):
 | Code | Meaning |
 |---|---|
 | `bad_device_id` | Any write (create, claim, continue, check-in): `X-Device-Id` is missing, blank, over 100 characters, or has characters other than letters, digits and `. _ : -` |
+| `chain_ended` | Claim or continue: the chain is more than 7 days old (counted from its first node). Nobody can add links any more |
 | `slot_closed` | Claim: no slots left, or the claim window has closed |
 | `already_claimed` | Claim: this device already claimed this node. Continue: this device already posted for it |
 | `own_node` | Claim: you can't claim your own node |

@@ -167,4 +167,45 @@ class NodeClaimTest {
         // The window is still open, but both slots are used by real children, so a claim must fail.
         assertEquals("slot_closed", claimError(parent.id(), nearby(), "device-b"));
     }
+
+    @Autowired
+    ca.kindredlink.chain.ChainService chains; // the service behind GET /api/chains/{id}
+
+    @Test
+    void chainMapCountsClaimsAsUsedSlots() {
+        NodeDetail parent = newParent();
+
+        // Two people claim, nobody has posted yet, so there are no children.
+        service.claim(parent.id(), nearby(), "device-b");
+        service.claim(parent.id(), nearby(), "device-c");
+
+        // The chain map must agree with the pins: both slots are taken, so 0 open.
+        var root = chains.tree(parent.chainId(), "device-a").nodes().getFirst();
+        assertEquals(0, root.openSlots());
+        assertEquals(0, pinFor(parent.id()).openSlots());
+    }
+
+    @Test
+    void pinCountdownStopsAtTheChainsSevenDayEnd() {
+        // A chain started 6 days 22 h ago, so it hits its 7-day hard stop in 2 h.
+        java.time.Instant now = clock.instant();
+        KindnessNode root = nodes.save(new KindnessNode(null, null, 0, "seed-root", "Old root", null,
+                LAT, LNG, LAT, LNG, now.minus(Duration.ofDays(7)).plus(Duration.ofHours(2))));
+        root.setChainId(root.getId());
+        nodes.save(root); // no transaction in tests, so save again to store the chainId
+
+        // A fresh link posted 1 h ago. On its own it would be open for another 11 h.
+        KindnessNode child = nodes.save(new KindnessNode(root.getId(), root.getId(), 1, "seed-child", "New link",
+                null, LAT, LNG, LAT, LNG, now.minus(Duration.ofHours(1))));
+
+        // Its countdown must stop at the chain's end (2 h from now), not at its own 12 h.
+        NodePin pin = pinFor(child.getId());
+        assertEquals(root.getCreatedAt().plus(Duration.ofDays(7)), pin.closesAt());
+        assertEquals(2, pin.openSlots());
+
+        // 3 h later the chain is over: the pin shows 0 open slots and a claim is rejected.
+        clock.advance(Duration.ofHours(3));
+        assertEquals(0, pinFor(child.getId()).openSlots());
+        assertEquals("chain_ended", claimError(child.getId(), nearby(), "device-b"));
+    }
 }
