@@ -3,7 +3,7 @@ import { getDeviceId } from './deviceId';
 import { getClerkSessionToken } from '@/auth/token';
 import { ancestors, descendants } from '@/map/graph';
 
-import { mockBusinesses, mockChain, mockNode, mockPins, mockStats } from './mocks';
+import { mockBusinesses, mockChain, mockContinueNode, mockCreateNode, mockNode, mockPins, mockStats } from './mocks';
 import type {
   ApiProblem,
   BusinessHub,
@@ -98,13 +98,13 @@ export function claimNode(nodeId: number, body: ClaimRequest): Promise<ClaimResp
 
 /** Start a brand-new chain at my current GPS fix. */
 export function createNode(body: CreateNodeRequest): Promise<NodeDetail> {
-  if (USE_MOCKS) return Promise.resolve({ ...mockNode(3), description: body.description });
+  if (USE_MOCKS) return Promise.resolve(mockCreateNode(body));
   return request('/api/nodes', post(body));
 }
 
 /** Continue a chain under parentId. The claim deadline, not distance, limits completion. */
 export function continueNode(parentId: number, body: CreateNodeRequest): Promise<NodeDetail> {
-  if (USE_MOCKS) return Promise.resolve({ ...mockNode(parentId), description: body.description });
+  if (USE_MOCKS) return Promise.resolve(mockContinueNode(parentId, body));
   return request(`/api/nodes/${parentId}/continue`, post(body));
 }
 

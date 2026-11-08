@@ -101,10 +101,10 @@ export default function ExploreScreen() {
       if (!location) return;
       const uploadedPhoto = photoUri ? await uploadPhoto(photoUri) : null;
       if (data.mode === 'log') {
-        await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
+        const created = await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
         await AsyncStorage.removeItem(ACTIVE_CLAIM_KEY);
         setStoredClaim(null);
-        Alert.alert('Kindness logged', 'Your act has been added to the tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(claimedNodeId) } }) }]);
+        Alert.alert('Kindness logged', 'Your act has been added to the tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(created.id) } }) }]);
       } else {
         const created = await createNode({ description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
         Alert.alert('Tree started', 'Your first act is now the beginning of a new tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(created.id) } }) }]);

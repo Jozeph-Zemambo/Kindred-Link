@@ -76,13 +76,35 @@ const nearbyLines = [
 
 const allTrees = [mockNet, mockLine, ...nearbyLines];
 const allNodes = allTrees.flatMap((t) => t.nodes.map((n) => ({ n, chainId: t.chainId })));
+const mockUserNodes: NodeDetail[] = [];
+let nextMockNodeId = 1000;
+
+function asChainNode(node: NodeDetail): ChainNode {
+  return {
+    id: node.id,
+    parentId: node.parentId,
+    depth: node.depth,
+    lat: node.lat,
+    lng: node.lng,
+    createdAt: node.createdAt,
+    openSlots: node.openSlots,
+    hasPhoto: Boolean(node.photoUrl),
+    mine: node.mine,
+    description: node.description,
+  };
+}
 
 export function mockChain(chainId: number): ChainTree {
-  return allTrees.find((t) => t.chainId === chainId) ?? mockNet;
+  const base = allTrees.find((t) => t.chainId === chainId);
+  const additions = mockUserNodes.filter((node) => node.chainId === chainId).map(asChainNode);
+  if (!base) {
+    return { chainId, status: 'ACTIVE', nodes: additions };
+  }
+  return additions.length ? { ...base, nodes: [...base.nodes, ...additions] } : base;
 }
 
 export function mockPins(onlyMine: boolean): NodePin[] {
-  return allNodes
+  const seededPins = allNodes
     .filter(({ n }) => !onlyMine || n.mine)
     .map(({ n, chainId }) => ({
       id: n.id, chainId, parentId: n.parentId, lat: n.lat, lng: n.lng, openSlots: n.openSlots,
@@ -91,6 +113,13 @@ export function mockPins(onlyMine: boolean): NodePin[] {
       childCount: allNodes.filter(({ n: c }) => c.parentId === n.id).length,
       depth: n.depth,
     }))
+  const addedPins = mockUserNodes.map((n) => ({
+    id: n.id, chainId: n.chainId, parentId: n.parentId, lat: n.lat, lng: n.lng, openSlots: n.openSlots,
+    createdAt: n.createdAt, closesAt: n.closesAt, hasPhoto: Boolean(n.photoUrl), mine: n.mine,
+    childCount: n.childIds.length, depth: n.depth,
+  }));
+  return [...seededPins, ...addedPins]
+    .filter((pin) => !onlyMine || pin.mine)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -103,6 +132,8 @@ const MOCK_PHOTOS: Record<number, string> = {
 };
 
 export function mockNode(id: number): NodeDetail {
+  const added = mockUserNodes.find((node) => node.id === id);
+  if (added) return added;
   const found = allNodes.find(({ n }) => n.id === id) ?? allNodes[0];
   const { n, chainId } = found;
   return {
@@ -112,6 +143,38 @@ export function mockNode(id: number): NodeDetail {
     childIds: allNodes.filter(({ n: c }) => c.parentId === n.id).map(({ n: c }) => c.id),
     mine: n.mine,
   };
+}
+
+function newMockNode(parent: NodeDetail | null, description: string, lat: number, lng: number): NodeDetail {
+  const id = nextMockNodeId++;
+  return {
+    id,
+    chainId: parent?.chainId ?? id,
+    parentId: parent?.id ?? null,
+    depth: parent ? parent.depth + 1 : 0,
+    description,
+    photoUrl: null,
+    lat,
+    lng,
+    openSlots: 2,
+    createdAt: new Date().toISOString(),
+    closesAt: new Date(Date.now() + 12 * 3_600_000).toISOString(),
+    childIds: [],
+    mine: true,
+  };
+}
+
+export function mockCreateNode(body: { description: string; lat: number; lng: number }): NodeDetail {
+  const node = newMockNode(null, body.description, body.lat, body.lng);
+  mockUserNodes.push(node);
+  return node;
+}
+
+export function mockContinueNode(parentId: number, body: { description: string; lat: number; lng: number }): NodeDetail {
+  const parent = mockNode(parentId);
+  const node = newMockNode(parent, body.description, body.lat, body.lng);
+  mockUserNodes.push(node);
+  return node;
 }
 
 export function mockStats(chainId: number): ChainStats {
