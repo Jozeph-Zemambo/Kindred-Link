@@ -29,7 +29,9 @@ springdoc:
 kindred:
   node:
     max-children: 2
-    open-hours: 12
+    # How long someone has to post their act after claiming a slot (capped at the chain's end).
+    # A node itself stays claimable until its chain ends (see chain.max-days).
+    finish-hours: 12
   continue-rules:
     # How close (metres) you must be to the parent's real location to continue it.
     max-distance-meters: 2000

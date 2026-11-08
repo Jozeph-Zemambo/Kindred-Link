@@ -21,7 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Tests the claim rules: 2 slots per node, one claim per person, no claiming your own node,
- * must be nearby, and the claim window closes 12 h after the parent was created.
+ * must be nearby, and a node stays claimable until its chain ends (not for a fixed 12 h).
  * Every test creates its own parent node, so the tests don't interfere with each other.
  */
 @SpringBootTest
@@ -108,12 +108,28 @@ class NodeClaimTest {
     }
 
     @Test
-    void cannotClaimAfterClaimWindowCloses() {
+    void unclaimedNodeStaysClaimableForDays() {
         NodeDetail parent = newParent();
 
-        clock.advance(Duration.ofHours(13)); // past the 12 h claim window
+        // Nobody claims it for 3 days. A node doesn't expire after 12 h: it lasts as long as its chain.
+        clock.advance(Duration.ofDays(3));
 
-        assertEquals("slot_closed", claimError(parent.id(), nearby(), "device-b"));
+        // Claiming still works, and the 12 h deadline starts from this claim, not from when the node was made.
+        ClaimResponse claim = service.claim(parent.id(), nearby(), "device-b");
+        assertEquals(claim.claimedAt().plus(Duration.ofHours(12)), claim.finishBy());
+    }
+
+    @Test
+    void nodeStaysOpenUntilItsChainEnds() {
+        NodeDetail parent = newParent();
+
+        clock.advance(Duration.ofDays(3));
+
+        // Still both slots open, and the pin's closesAt is the chain's 7-day end, not 12 h after creation.
+        NodePin pin = service.listPins(LAT, LNG, 2000, false, "device-a").stream()
+                .filter(p -> p.id().equals(parent.id())).findFirst().orElseThrow();
+        assertEquals(2, pin.openSlots());
+        assertEquals(parent.createdAt().plus(Duration.ofDays(7)), pin.closesAt());
     }
 
     /** Looks up one node's pin the way the map would (all pins near the spot, then pick ours). */
@@ -194,11 +210,12 @@ class NodeClaimTest {
         root.setChainId(root.getId());
         nodes.save(root); // no transaction in tests, so save again to store the chainId
 
-        // A fresh link posted 1 h ago. On its own it would be open for another 11 h.
+        // A fresh link posted 1 h ago, when the chain had only 3 h left.
         KindnessNode child = nodes.save(new KindnessNode(root.getId(), root.getId(), 1, "seed-child", "New link",
                 null, LAT, LNG, LAT, LNG, now.minus(Duration.ofHours(1))));
 
-        // Its countdown must stop at the chain's end (2 h from now), not at its own 12 h.
+        // A node lasts as long as what's left of its chain, so its countdown stops at the chain's
+        // end (2 h from now), however long ago or recently it was created.
         NodePin pin = pinFor(child.getId());
         assertEquals(root.getCreatedAt().plus(Duration.ofDays(7)), pin.closesAt());
         assertEquals(2, pin.openSlots());

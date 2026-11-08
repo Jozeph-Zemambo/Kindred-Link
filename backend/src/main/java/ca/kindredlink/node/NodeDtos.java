@@ -41,8 +41,8 @@ public final class NodeDtos {
      * shown, never the real location.
      *
      * Two fields are easy to mix up:
-     *  - openSlots: how many slots can still be CLAIMED (2 minus claims taken; 0 once the 12 h
-     *    claim window is over).
+     *  - openSlots: how many slots can still be CLAIMED (2 minus claims taken; 0 once the chain's
+     *    7-day end has passed). closesAt is that chain end.
      *  - childCount: how many children actually POSTED their act (a claim that isn't finished yet
      *    doesn't count). A node has at most 2 children.
      * Example: two people claimed, one posted, one is still working on it. openSlots = 0 (both
