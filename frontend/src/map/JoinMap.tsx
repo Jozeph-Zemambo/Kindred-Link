@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import MapView, { Circle, Marker } from 'react-native-maps';
 
@@ -14,6 +14,7 @@ import { NodeDot } from './NodeDot';
 import { mostPopular } from './popularity';
 import { JOIN_RADIUS_M } from './rules';
 import { BASE_MAP, palette, RADIUS_FILL, RADIUS_STROKE } from './theme';
+import { useBusinessBubbleScale } from './useBusinessBubbleScale';
 
 // The "find a node to join" map: only findable nodes, all the same colour, the 3 most popular
 // pulsing. Tapping one slides in the join panel. Businesses stay on the map as bubbles.
@@ -48,13 +49,19 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
 
   const span = (radiusMeters * 2.4) / 111_320;
   const region = { latitude: me.lat, longitude: me.lng, latitudeDelta: span, longitudeDelta: span };
+  const mapRef = useRef<MapView>(null);
+  const bubbleScale = useBusinessBubbleScale(mapRef);
 
   return (
-    <View style={[styles.map, style]}>
+    <View style={[styles.map, style]} onLayout={bubbleScale.onLayout}>
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
+        onMapReady={bubbleScale.onMapReady}
         showsUserLocation
+        onRegionChange={bubbleScale.onRegionChange}
+        onRegionChangeComplete={bubbleScale.onRegionChangeComplete}
         onUserLocationChange={(e) => {
           const c = e.nativeEvent.coordinate;
           if (c) setLive({ lat: c.latitude, lng: c.longitude });
@@ -74,9 +81,10 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}
+            tracksViewChanges
             onPress={() => (onBusinessPress ? onBusinessPress(b.id) : setOpenBusiness(b))}
           >
-            <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} />
+            <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} mapScale={bubbleScale.mapScale} />
           </Marker>
         ))}
         {findable.map((p) => {

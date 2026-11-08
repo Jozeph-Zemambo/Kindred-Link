@@ -110,6 +110,12 @@ export type BusinessHub = {
   diameterUnits: number;
   /** Requested from backend (not sent yet): total paid forward here, in cents. */
   paidForwardCents?: number;
+  /** Backend recency: ISO time of the last kindness act here, or null when never. */
+  lastKindnessAt?: string | null;
+  /** Backend recency fade, 0..1 (BusinessDtos.BusinessHub.opacity). Absent = fully visible. */
+  opacity?: number;
+  /** Display-only demo totals applied client-side (businessDemoTotals); not server data. */
+  demoTotals?: boolean;
 };
 
 export type CheckinRequest = {

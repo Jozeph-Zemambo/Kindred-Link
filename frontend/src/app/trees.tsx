@@ -4,7 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getChain, getNode, listMine } from '@/api/client';
+import { useBusinesses } from '@/api/useBusinesses';
 import { useLoad } from '@/api/useLoad';
+import { BusinessMapStatus } from '@/components/BusinessMapStatus';
 import { LoadState } from '@/components/LoadState';
 import { ChainMap, descendants } from '@/map';
 
@@ -23,6 +25,8 @@ export default function TreesScreen() {
     if (!latest) return null;
     return { latest, tree: await getChain(latest.chainId) };
   }, [claimedNodeId]);
+  // Businesses load alongside the tree, not inside it, so a catalog outage can't hide the tree.
+  const businesses = useBusinesses();
   const tree = data?.tree;
   const viewNodes = useMemo(() => {
     if (!tree || viewMode === 'full') return tree?.nodes ?? [];
@@ -39,7 +43,7 @@ export default function TreesScreen() {
       <View style={styles.header}><Text style={styles.eyebrow}>YOUR KINDNESS</Text><Text style={styles.title}>My tree</Text><Text style={styles.subtitle}>The tree you contributed to most recently.</Text></View>
       {loading || error ? <LoadState error={error} onRetry={reload} /> : !tree ? <LoadState empty="Your tree will appear after your first act of kindness." /> : <View style={styles.content}>
         <View style={styles.toggle}><Pressable onPress={() => setViewMode('full')} style={[styles.toggleOption, viewMode === 'full' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'full' && styles.toggleSelectedText]}>Full tree</Text></Pressable><Pressable onPress={() => setViewMode('fromMine')} style={[styles.toggleOption, viewMode === 'fromMine' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'fromMine' && styles.toggleSelectedText]}>From my contribution</Text></Pressable></View>
-        <View style={styles.mapCard}><ChainMap nodes={viewNodes} /></View>
+        <View style={styles.mapCard}><ChainMap nodes={viewNodes} businesses={businesses.businesses} /><BusinessMapStatus error={businesses.error} onRetry={businesses.reload} /></View>
         <View style={styles.statsCard}><Text style={styles.statsTitle}>{viewMode === 'full' ? 'Your tree, still growing' : 'What grew from your contribution'}</Text><View style={styles.statsRow}><View><Text style={styles.statValue}>{viewNodes.length}</Text><Text style={styles.statLabel}>acts connected</Text></View><View><Text style={styles.statValue}>{depth}</Text><Text style={styles.statLabel}>steps deep</Text></View><View><Text style={styles.statValue}>{tree.status === 'ENDED' ? 'Complete' : 'Growing'}</Text><Text style={styles.statLabel}>current status</Text></View></View></View>
       </View>}
     </SafeAreaView>
