@@ -2,10 +2,12 @@ package ca.kindredlink.chain;
 
 import ca.kindredlink.chain.ChainDtos.ChainStats;
 import ca.kindredlink.chain.ChainDtos.ChainTree;
-import ca.kindredlink.common.DeviceId;
+import ca.kindredlink.security.AuthenticatedUser;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,8 +24,8 @@ public class ChainController {
 
     @GetMapping("/{id}")
     public ChainTree tree(@PathVariable Long id,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.tree(id, deviceId);
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.tree(id, AuthenticatedUser.optional(jwt));
     }
 
     @GetMapping("/{id}/stats")

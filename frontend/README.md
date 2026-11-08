@@ -2,6 +2,10 @@
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+## Authentication
+
+The app uses Auth0 for accounts and protected API requests. Follow the [Auth0 setup guide](../AUTH0_SETUP.md) to configure tenant values and build a native development client. Auth0 does not work in Expo Go.
+
 ## Get started
 
 1. Install dependencies

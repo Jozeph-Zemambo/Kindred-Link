@@ -44,3 +44,6 @@ example
 
 
 .PROJECT_CONTEXT.md
+# Local Auth0 and API configuration
+.env.local
+.env.*.local
