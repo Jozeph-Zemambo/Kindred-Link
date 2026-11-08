@@ -63,9 +63,3 @@ kindred:
     admin-key: ${MODERATOR_KEY:}
 
   seed-demo-data: true
-
-# Auth0 API config: set these as environment variables (never commit a client secret).
-# Domain is hostname only, e.g. dev-example.us.auth0.com; audience is the API Identifier.
-auth0:
-  domain: ${AUTH0_DOMAIN:}
-  audience: ${AUTH0_AUDIENCE:}

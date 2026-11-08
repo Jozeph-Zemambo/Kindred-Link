@@ -1,7 +1,5 @@
 package ca.kindredlink.business;
 
-import java.time.Instant;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 /** One verified QR scan at a business till. nodeId is set when the visit was an act of kindness. */
 @Entity

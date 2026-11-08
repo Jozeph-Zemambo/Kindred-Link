@@ -1,6 +1,6 @@
 package ca.kindredlink.photo;
 
-import ca.kindredlink.security.AuthenticatedUser;
+import ca.kindredlink.common.DeviceId;
 import ca.kindredlink.photo.PhotoDtos.PhotoSummary;
 import ca.kindredlink.photo.PhotoDtos.PhotoUploadResponse;
 import java.io.IOException;
@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -43,8 +41,9 @@ public class PhotoController {
     @ResponseStatus(HttpStatus.CREATED)
     public PhotoUploadResponse upload(
             @RequestPart("file") MultipartFile file, // the picture itself
-            @AuthenticationPrincipal Jwt jwt) throws IOException {
-        return service.upload(file.getBytes(), AuthenticatedUser.require(jwt));
+            // required = false so our own clear "bad_device_id" error shows up, not a generic 400
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) throws IOException {
+        return service.upload(file.getBytes(), DeviceId.require(deviceId));
     }
 
     /**
