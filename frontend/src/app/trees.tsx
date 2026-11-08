@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getChain, getNode, listMine } from '@/api/client';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
-import { BottomNav } from '@/components/BottomNav';
 import { ChainMap, descendants } from '@/map';
 
 const COLORS = { cream: '#FFF9E9', blue: '#80B9E5', navy: '#303A59', white: '#FFFFFF', muted: '#6C748A', line: '#E9DEC4', tangerine: '#F49A68' };
@@ -43,7 +42,6 @@ export default function TreesScreen() {
         <View style={styles.mapCard}><ChainMap nodes={viewNodes} /></View>
         <View style={styles.statsCard}><Text style={styles.statsTitle}>{viewMode === 'full' ? 'Your tree, still growing' : 'What grew from your contribution'}</Text><View style={styles.statsRow}><View><Text style={styles.statValue}>{viewNodes.length}</Text><Text style={styles.statLabel}>acts connected</Text></View><View><Text style={styles.statValue}>{depth}</Text><Text style={styles.statLabel}>steps deep</Text></View><View><Text style={styles.statValue}>{tree.status === 'ENDED' ? 'Complete' : 'Growing'}</Text><Text style={styles.statLabel}>current status</Text></View></View></View>
       </View>}
-      <BottomNav active="trees" />
     </SafeAreaView>
   );
 }

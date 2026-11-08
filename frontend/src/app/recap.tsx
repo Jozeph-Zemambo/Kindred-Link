@@ -7,7 +7,6 @@ import { getRecap } from '@/api/client';
 import type { RecapMoment } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
-import { BottomNav } from '@/components/BottomNav';
 import { assetUrl, ChainMap } from '@/map';
 
 const COLORS = { cream: '#FFF9E9', yellow: '#FFD36D', blue: '#80B9E5', tangerine: '#F49A68', navy: '#303A59', white: '#FFFFFF', muted: '#6C748A', line: '#E9DEC4', purple: '#9B8BE8' };
@@ -16,18 +15,6 @@ const acts = (count: number) => `${count} ${count === 1 ? 'act' : 'acts'}`;
 
 // Shown behind photos and the map while they load: a soft tint of the card instead of a white box.
 const LOADING_TINT = 'rgba(255, 255, 255, 0.14)';
-
-function formatRecapPeriod(week?: string) {
-  const match = week?.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) return 'This period';
-  const year = Number(match[1]);
-  const weekNumber = Number(match[2]);
-  const januaryFourth = new Date(year, 0, 4);
-  const monday = new Date(januaryFourth);
-  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + ((weekNumber - 1) * 7));
-  const month = monday.toLocaleDateString(undefined, { month: 'long' });
-  return `${year} · ${month} · Week ${Math.ceil(monday.getDate() / 7)}`;
-}
 
 /**
  * Pages slide over each other: the new page comes in from the side you're moving toward (Next:
@@ -121,7 +108,7 @@ export default function RecapScreen() {
     const story = stories[i];
     return (
           <View style={[styles.storyCard, story === 'intro' && styles.introCard, story === 'trees' && styles.treesCard, story === 'acts' && styles.actsCard, story === 'map' && styles.mapStoryCard, typeof story !== 'string' && styles.photoCard]}>
-            {story === 'intro' && <><Text style={styles.kicker}>A LITTLE LOOK BACK</Text><Text style={styles.bigTitle}>Your kindness{`\n`}kept moving.</Text><Text style={styles.storyBody}>Here’s the ripple you helped create during {formatRecapPeriod(data?.week)}.</Text></>}
+            {story === 'intro' && <><Text style={styles.kicker}>YOUR RECAP</Text><Text style={styles.bigTitle}>Your kindness{`\n`}kept moving.</Text><Text style={styles.storyBody}>Here’s the ripple you helped create.</Text></>}
             {story === 'trees' && <><Text style={styles.kicker}>YOUR RIPPLE</Text><CountUp style={styles.statNumber} value={stats.trees} /><Text style={styles.statTitle}>trees grew with you</Text><Text style={styles.storyBody}>Every tree is a collection of small acts that kept moving from person to person.</Text></>}
             {story === 'acts' && <><Text style={styles.kicker}>YOUR BIGGEST MOMENT</Text><CountUp style={styles.statNumber} value={stats.longest} /><Text style={styles.statTitle}>{stats.longest === 1 ? 'act' : 'acts'} in your longest ripple</Text><Text style={styles.storyBody}>That’s how far one kind choice travelled through the community.</Text></>}
             {typeof story !== 'string' && story.kind === 'photo' && <><Text style={styles.kicker}>A MOMENT WORTH KEEPING</Text><View style={styles.photoFrame}>{story.moment.photoUrl ? <Image source={{ uri: assetUrl(story.moment.photoUrl) }} style={styles.photo} resizeMode="cover" /> : <Text style={styles.photoFallback}>Photo coming soon</Text>}</View><Text style={styles.photoCaption}>{story.moment.description}</Text><Text style={styles.storyBody}>A glimpse of the kindness you helped set in motion.</Text></>}
@@ -132,7 +119,7 @@ export default function RecapScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}><Text style={styles.headerTitle}>Your kindness recap</Text><Text style={styles.headerPeriod}>{formatRecapPeriod(data?.week)}</Text></View>
+      <View style={styles.header}><Text style={styles.headerTitle}>Your recap</Text></View>
       {loading || error || !data ? <LoadState error={error} onRetry={reload} /> : (
         <View style={styles.storyArea}>
           <View style={styles.progressRow}>{stories.map((_, index) => <ProgressSegment key={index} filled={index <= storyIndex} />)}</View>
@@ -140,7 +127,6 @@ export default function RecapScreen() {
           <View style={styles.navigation}><Pressable onPress={() => go(-1)} disabled={storyIndex === 0} style={[styles.navButton, storyIndex === 0 && styles.disabledButton]}><Text style={styles.navButtonText}>Back</Text></Pressable><Text style={styles.pageCount}>{storyIndex + 1} / {stories.length}</Text><Pressable onPress={() => storyIndex === stories.length - 1 ? router.replace('/') : go(1)} style={styles.navButton}><Text style={styles.navButtonText}>{storyIndex === stories.length - 1 ? 'Done' : 'Next'}</Text></Pressable></View>
         </View>
       )}
-      <BottomNav active="home" />
     </SafeAreaView>
   );
 }
