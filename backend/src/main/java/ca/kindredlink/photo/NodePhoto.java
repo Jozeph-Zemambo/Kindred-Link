@@ -25,7 +25,7 @@ public class NodePhoto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Who uploaded it (their verified Auth0 account). */
+    /** Who uploaded it (their X-Device-Id). */
     @Column(nullable = false)
     private String uploaderDeviceId;
 

@@ -8,8 +8,7 @@
     "scheme": "kindredlink",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "bundleIdentifier": "ca.kindredlink.app"
+      "icon": "./assets/expo.icon"
     },
     "android": {
       "package": "ca.kindredlink",
@@ -19,8 +18,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "ca.kindredlink.app"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "server",

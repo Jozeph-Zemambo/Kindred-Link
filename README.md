@@ -1,5 +1,3 @@
-> **Authentication update:** Auth0 JWT authentication has been integrated for write operations and account-specific reads. **Start with [AUTH0_SETUP.md](AUTH0_SETUP.md)** for Auth0 Dashboard, environment variables, custom Expo development-build instructions and security tests. Expo Go is not supported for this auth flow.
-
 # Kindred-Link
 
 Kindness chains on a map. Mobile app (Expo / React Native) + Java API (Spring Boot).
@@ -76,7 +74,7 @@ Frontend:
 cd frontend && npm install && npx expo start
 ```
 
-Use an Expo **development build** (not Expo Go) for Auth0. From a phone, call the API at `http://<laptop-LAN-IP>:8080`.
+Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:8080`.
 
 ## API
 
@@ -96,7 +94,7 @@ Use an Expo **development build** (not Expo Go) for Auth0. From a phone, call th
 | GET | /api/photos/pending | Moderator only (`X-Admin-Key`): photos waiting for a decision |
 | POST | /api/photos/{id}/approve, /reject | Moderator only (`X-Admin-Key`) |
 
-For authenticated requests, send `Authorization: Bearer <Auth0-access-token>`; the backend no longer trusts `X-Device-Id`. See `AUTH0_SETUP.md`.
+Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
 Game rules (2 slots, 12 h to finish after claiming, 7-day chain limit, distances, privacy grid) are in `backend/src/main/resources/application.yml`.
 
 ## Claim, then continue
@@ -123,16 +121,16 @@ Error codes (the `title` field of the error JSON):
 
 | Code | Meaning |
 |---|---|
-| `401 Unauthorized` | Access token missing, invalid, expired or issued for the wrong API |
+| `bad_device_id` | Any write (create, claim, continue, check-in): `X-Device-Id` is missing, blank, over 100 characters, or has characters other than letters, digits and `. _ : -` |
 | `chain_ended` | Claim or continue: the chain is more than 7 days old (counted from its first node). Nobody can add links any more |
 | `slot_closed` | Claim: both slots of this node are already taken (claimed, finished or not) |
-| `already_claimed` | Claim: your authenticated account already claimed this node. Continue: your account already posted for it |
+| `already_claimed` | Claim: this device already claimed this node. Continue: this device already posted for it |
 | `own_node` | Claim: you can't claim your own node |
 | `too_far` | Claim or continue: you're too far from the node |
 | `no_claim` | Continue: claim this node first |
 | `claim_expired` | Continue: your 12 h to finish ran out, and the slot is gone |
 | `bad_photo` | Upload: the file isn't a readable picture, is empty, or is over 25 megapixels |
-| `not_your_photo` | Create / continue: the `photoId` was uploaded by a different authenticated account |
+| `not_your_photo` | Create / continue: the `photoId` was uploaded by a different device |
 | `photo_used` | Create / continue: that photo is already attached to a node |
 | `not_moderator` | Moderation endpoints: missing or wrong `X-Admin-Key` (or moderation is switched off) |
 
@@ -140,7 +138,7 @@ Error codes (the `title` field of the error JSON):
 
 After writing a good deed, a user can take a photo of it. It is optional.
 
-1. **Upload:** `POST /api/photos` (multipart/form-data, part `file`, header `Authorization: Bearer <access-token>`). The phone should compress first; the server also strips hidden data (GPS, camera info), shrinks the picture to 1600 px and re-saves it as a plain JPEG. Max 5 MB. The answer is `{id, status: "PENDING"}`.
+1. **Upload:** `POST /api/photos` (multipart/form-data, part `file`, header `X-Device-Id`). The phone should compress first; the server also strips hidden data (GPS, camera info), shrinks the picture to 1600 px and re-saves it as a plain JPEG. Max 5 MB. The answer is `{id, status: "PENDING"}`.
 2. **Attach:** send that `id` as `photoId` in the body of `POST /api/nodes` or `POST /api/nodes/{id}/continue`. There is no free-text photo link any more. You can only attach a photo you uploaded, and a photo can be used once.
 3. **Moderation:** every photo is hidden until a moderator approves it. Moderators send the secret in the `X-Admin-Key` header (set on the server with the `MODERATOR_KEY` environment variable; if it is empty, moderation is off and nothing can be approved).
 4. **Who sees it:** everyone, on every map (including the one where you browse for nodes to join), but only once a moderator has approved it.
@@ -152,8 +150,9 @@ After writing a good deed, a user can take a photo of it. It is optional.
 ## Business Bubble Growth
 
 Each business hub reports `diameterUnits` - a logical bubble size derived from
-`visitors`, the lifetime count of unique authenticated accounts that checked in there
-(repeat scans by the same account do not grow the bubble). It is additive on
+`visitors`, the lifetime count of unique device IDs that checked in there
+(approximates people, but devices are not guaranteed to be individuals; repeat
+scans by the same device don't grow the bubble). It is additive on
 `GET /api/businesses` and on the nested `business` in checkin responses; the
 frontend maps units to pixels.
 
