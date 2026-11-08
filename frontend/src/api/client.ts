@@ -1,3 +1,6 @@
+import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
+
 import { API_URL, RECAP_ENDPOINT_READY, USE_MOCKS } from './config';
 import { getDeviceId } from './deviceId';
 import { ancestors, descendants } from '@/map/graph';
@@ -66,8 +69,15 @@ export function getNode(id: number): Promise<NodeDetail> {
 /** Uploads a local image to the moderated photo endpoint and returns its server id. */
 export async function uploadPhoto(uri: string): Promise<PhotoUploadResponse> {
   if (USE_MOCKS) return { id: 1, status: 'PENDING' };
+  // expo/fetch rejects RN's { uri, name, type } FormData part; it needs a real Blob or expo-file-system File.
   const form = new FormData();
-  form.append('file', { uri, name: `kindred-${Date.now()}.jpg`, type: 'image/jpeg' } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error(`Failed to read photo: ${res.status} ${res.statusText}`);
+    form.append('file', await res.blob(), `kindred-${Date.now()}.jpg`);
+  } else {
+    form.append('file', new File(uri));
+  }
   const res = await fetch(`${API_URL}/api/photos`, {
     method: 'POST',
     headers: { 'X-Device-Id': await getDeviceId() },

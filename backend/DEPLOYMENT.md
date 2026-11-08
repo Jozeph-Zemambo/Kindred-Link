@@ -53,6 +53,30 @@ Notes:
 - Use `SPRING_PROFILES_ACTIVE=postgres` - **not** `local`. The `local`
   profile file only exists on a developer machine and is never in the image.
 
+### Optional: automatic photo screening (Google Cloud Vision)
+
+New uploads can be screened by the Vision `images:annotate` SafeSearch
+endpoint before they reach the manual queue.
+
+- In Google Cloud: enable the **Vision API** on the project (requires
+  billing), then create an **API key restricted to the Vision API** (and
+  ideally to the backend's IP). A Maps **app-restricted** key (Android/iOS
+  restriction) is *not* reusable here - it must be a server-usable key.
+- Set `GOOGLE_VISION_API_KEY` in the Render dashboard (same place as the
+  variables above). The backend sends it in the `X-Goog-Api-Key` header,
+  never in the URL or logs.
+- Policy (fixed in `PhotoSafetyPolicy`, not configurable): a photo is
+  auto-approved only when SafeSearch reports **adult, violence and racy
+  each as `VERY_UNLIKELY` or `UNLIKELY`**. Any higher likelihood, missing
+  or unknown value, provider error, timeout, HTTP error, or blank key
+  leaves the photo **PENDING** for a moderator - it is never auto-rejected.
+- The `MODERATOR_KEY` flow stays useful: screening failures, borderline
+  results, and every photo uploaded before the key was set still need a
+  manual approve. Only **new** uploads are screened; existing pending
+  photos are untouched.
+- With no key set, nothing changes: no requests are made and every photo
+  stays in the manual queue.
+
 ## 3. After deploy
 
 - `GET https://<service>.onrender.com/actuator/health` -> `{"status":"UP"}`
