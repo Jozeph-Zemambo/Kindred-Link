@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { listMine } from '@/api/client';
 import { API_URL, USE_MOCKS } from '@/api/config';
 import { getDeviceId, resetDeviceId } from '@/api/deviceId';
+import { useAuth0Account } from '@/auth/useAuth0Account';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 

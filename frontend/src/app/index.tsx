@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth0 } from 'react-native-auth0';
 
@@ -218,7 +218,7 @@ function ActionButton({ label, onPress, primary = false }: { label: string; onPr
 function HeroCarousel({ hasRecap, recapViewed, onRecapViewed }: { hasRecap: boolean; recapViewed: boolean; onRecapViewed: () => void }) {
   const { width } = useWindowDimensions();
   const slideWidth = Math.max(1, width - 40);
-  const carousel = useRef<ScrollView>(null);
+  const carousel = useRef<ScrollViewInstance>(null);
   const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
