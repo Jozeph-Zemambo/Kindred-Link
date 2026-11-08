@@ -104,6 +104,10 @@ A node has 2 slots. To add a child, a person first **claims** a slot, then **con
 - You can't claim your own node, can't claim the same node twice, and must be within the allowed distance
   (checked on the server using the real GPS fix) when you claim and when you continue.
 
+Map pins (`GET /api/nodes`) reflect this:
+- `openSlots` is how many slots can still be **claimed** (2 minus claims taken, and 0 once the 12 h claim window is over).
+- `childCount` is how many children actually **posted** (claimed but unfinished slots don't count).
+
 Error codes (the `title` field of the error JSON):
 
 | Code | Meaning |

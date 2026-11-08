@@ -28,10 +28,14 @@ public class NodeRules {
         return node.getCreatedAt().plus(Duration.ofHours(props.node().openHours()));
     }
 
-    public int openSlots(KindnessNode node, long childCount, Instant now) {
+    /**
+     * How many slots can still be claimed. {@code slotsUsed} is the number of slots already taken
+     * (claimed, whether or not the claimer finished). Zero once the claim window has closed.
+     */
+    public int openSlots(KindnessNode node, long slotsUsed, Instant now) {
         if (!now.isBefore(closesAt(node))) {
             return 0;
         }
-        return (int) Math.max(0, props.node().maxChildren() - childCount);
+        return (int) Math.max(0, props.node().maxChildren() - slotsUsed);
     }
 }

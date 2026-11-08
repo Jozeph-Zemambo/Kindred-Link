@@ -53,14 +53,21 @@ public class NodeService {
         } else {
             found = nodes.findAll();
         }
+        // Two batch lookups (one query each) instead of one query per pin.
         Map<Long, Long> childCounts = childCounts(found);
+        Map<Long, Long> claimCounts = claimCounts(found);
         Instant now = clock.instant();
         return found.stream()
-                .map(n -> new NodePin(
-                        n.getId(), n.getChainId(), n.getParentId(), n.getApproxLat(), n.getApproxLng(),
-                        rules.openSlots(n, childCounts.getOrDefault(n.getId(), 0L), now),
-                        n.getCreatedAt(), rules.closesAt(n), n.getPhotoUrl() != null,
-                        Objects.equals(n.getAuthorDeviceId(), deviceId)))
+                .map(n -> {
+                    long children = childCounts.getOrDefault(n.getId(), 0L);
+                    long claimed = claimCounts.getOrDefault(n.getId(), 0L);
+                    return new NodePin(
+                            n.getId(), n.getChainId(), n.getParentId(), n.getApproxLat(), n.getApproxLng(),
+                            rules.openSlots(n, usedSlots(claimed, children), now),
+                            n.getCreatedAt(), rules.closesAt(n), n.getPhotoUrl() != null,
+                            Objects.equals(n.getAuthorDeviceId(), deviceId),
+                            (int) children);
+                })
                 .toList();
     }
 
@@ -181,8 +188,29 @@ public class NodeService {
                 .toList();
         return new NodeDetail(
                 n.getId(), n.getChainId(), n.getParentId(), n.getDepth(), n.getDescription(), n.getPhotoUrl(),
-                n.getApproxLat(), n.getApproxLng(), rules.openSlots(n, childIds.size(), clock.instant()),
+                n.getApproxLat(), n.getApproxLng(),
+                rules.openSlots(n, usedSlots(claims.countByNodeId(n.getId()), childIds.size()), clock.instant()),
                 n.getCreatedAt(), rules.closesAt(n), childIds, Objects.equals(n.getAuthorDeviceId(), deviceId));
+    }
+
+    /**
+     * How many of a node's slots are used up. A claim uses a slot, finished or not. We take the
+     * bigger of claims and children because the demo seed data has children but no claims, and
+     * those old demo nodes shouldn't look open.
+     */
+    private static long usedSlots(long claimed, long children) {
+        return Math.max(claimed, children);
+    }
+
+    /** Claim counts for many nodes in one query. Nodes with no claims are missing from the map. */
+    Map<Long, Long> claimCounts(List<KindnessNode> parents) {
+        if (parents.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = parents.stream().map(KindnessNode::getId).toList();
+        return claims.countClaims(ids).stream()
+                .collect(Collectors.toMap(NodeClaimRepository.ClaimCount::getNodeId,
+                        NodeClaimRepository.ClaimCount::getCount));
     }
 
     Map<Long, Long> childCounts(List<KindnessNode> parents) {

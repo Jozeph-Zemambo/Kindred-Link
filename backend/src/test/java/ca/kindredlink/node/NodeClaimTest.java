@@ -8,6 +8,7 @@ import ca.kindredlink.node.NodeDtos.ClaimRequest;
 import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
+import ca.kindredlink.node.NodeDtos.NodePin;
 import ca.kindredlink.node.NodeWindowTest.MutableClock;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -113,5 +114,39 @@ class NodeClaimTest {
         clock.advance(Duration.ofHours(13)); // past the 12 h claim window
 
         assertEquals("slot_closed", claimError(parent.id(), nearby(), "device-b"));
+    }
+
+    /** Looks up one node's pin the way the map would (all pins near the spot, then pick ours). */
+    private NodePin pinFor(Long nodeId) {
+        return service.listPins(LAT, LNG, 2000, false, "device-a").stream()
+                .filter(p -> p.id().equals(nodeId))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    @Test
+    void claimingASlotLowersOpenSlotsOnThePin() {
+        NodeDetail parent = newParent();
+        assertEquals(2, pinFor(parent.id()).openSlots());
+
+        service.claim(parent.id(), nearby(), "device-b");
+        assertEquals(1, pinFor(parent.id()).openSlots());
+
+        service.claim(parent.id(), nearby(), "device-c");
+        assertEquals(0, pinFor(parent.id()).openSlots());
+    }
+
+    @Test
+    void childCountOnlyCountsPeopleWhoActuallyPosted() {
+        NodeDetail parent = newParent();
+        service.claim(parent.id(), nearby(), "device-b");
+        service.claim(parent.id(), nearby(), "device-c");
+
+        // Both claimed, but only device-b posts
+        service.continueChain(parent.id(), new CreateNodeRequest("I did it", null, LAT, LNG), "device-b");
+
+        NodePin pin = pinFor(parent.id());
+        assertEquals(1, pin.childCount());
+        assertEquals(0, pin.openSlots());
     }
 }

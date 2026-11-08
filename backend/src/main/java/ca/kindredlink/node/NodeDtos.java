@@ -46,7 +46,8 @@ public final class NodeDtos {
             Instant createdAt,
             Instant closesAt,
             boolean hasPhoto,
-            boolean mine) {}
+            boolean mine,
+            int childCount) {} // children who actually posted (not just claimed)
 
     public record NodeDetail(
             Long id,
