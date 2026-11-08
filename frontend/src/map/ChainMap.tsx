@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { BusinessBubble } from './BusinessBubble';
 import { edges, type GraphNode } from './graph';
@@ -22,28 +22,70 @@ export type BusinessPin = {
 
 export type ChainMapProps = {
   nodes: GraphNode[];
-  /** The node to highlight (usually "you"). */
+  /**
+   * No longer drawn: the only marked node is your latest act in the chain (see youMarker).
+   * Kept so existing screens that pass it still compile.
+   */
   focusId?: number;
   businesses?: BusinessPin[];
-  /** Also called on tap; the act's detail card opens either way unless showDetails is false. */
+  /** Screen handles taps itself (e.g. navigates). If omitted, the map opens the act's card. */
   onNodePress?: (id: number) => void;
   onBusinessPress?: (id: number) => void;
+  /** Force the act card on or off; by default it shows only when onNodePress isn't given. */
   showDetails?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-const UCALGARY = { latitude: 51.0784, longitude: -114.1305, latitudeDelta: 0.03, longitudeDelta: 0.03 };
+const UCALGARY: Region = { latitude: 51.0784, longitude: -114.1305, latitudeDelta: 0.03, longitudeDelta: 0.03 };
 
-export function ChainMap({ nodes, focusId, businesses = [], onNodePress, onBusinessPress, showDetails = true, style }: ChainMapProps) {
+/** Fill for a node: the palette cycled along the line, yours included. */
+function fillFor(n: GraphNode): string {
+  return NODE_FILLS[(n.depth ?? n.id) % NODE_FILLS.length];
+}
+
+/**
+ * "You are here": your most recent act in this chain gets the ring. Earlier acts of yours in
+ * the same chain look like everyone else's.
+ */
+function youMarker(nodes: GraphNode[]): number | undefined {
+  const mine = nodes.filter((n) => n.mine);
+  if (mine.length === 0) return undefined;
+  return mine.reduce((best, n) => {
+    const [a, b] = [n.createdAt ?? '', best.createdAt ?? ''];
+    return a > b || (a === b && (n.depth ?? 0) > (best.depth ?? 0)) ? n : best;
+  }).id;
+}
+
+/** A view a bit wider than the chain, so opening the map plays a short zoom-in onto it. */
+function startRegion(points: { lat: number; lng: number }[]): Region {
+  if (points.length === 0) return UCALGARY;
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max(maxLat - minLat, 0.004) * 2.6,
+    longitudeDelta: Math.max(maxLng - minLng, 0.004) * 2.6,
+  };
+}
+
+export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress, showDetails, style }: ChainMapProps) {
   const map = useRef<MapView>(null);
+  const youId = useMemo(() => youMarker(nodes), [nodes]);
   const ready = useRef(false);
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [open, setOpen] = useState<{ id: number; accent: string } | null>(null);
+  const detailsOn = showDetails ?? !onNodePress;
+  const initialRegion = useMemo(() => startRegion([...nodes, ...businesses]), []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Frame every node (and business, if any) on screen, animated. */
   const fit = () => {
     const coords = [...nodes, ...businesses].map((p) => ({ latitude: p.lat, longitude: p.lng }));
-    if (coords.length > 1) {
+    if (coords.length === 1) {
+      map.current?.animateToRegion({ ...coords[0], latitudeDelta: 0.006, longitudeDelta: 0.006 }, 700);
+    } else if (coords.length > 1) {
       map.current?.fitToCoordinates(coords, {
-        edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+        edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
         animated: true,
       });
     }
@@ -62,7 +104,7 @@ export function ChainMap({ nodes, focusId, businesses = [], onNodePress, onBusin
 
   return (
     <View style={[styles.map, style]}>
-      <MapView ref={map} style={StyleSheet.absoluteFill} initialRegion={UCALGARY} onMapReady={onMapReady} showsUserLocation {...BASE_MAP}>
+      <MapView ref={map} style={StyleSheet.absoluteFill} initialRegion={initialRegion} onMapReady={onMapReady} showsUserLocation {...BASE_MAP}>
         {edges(nodes).map(({ from, to }) => (
           <Polyline
             key={`${from.id}-${to.id}`}
@@ -86,7 +128,8 @@ export function ChainMap({ nodes, focusId, businesses = [], onNodePress, onBusin
           </Marker>
         ))}
         {nodes.map((n) => {
-          const highlighted = n.mine || n.id === focusId;
+          const highlighted = n.id === youId;
+          const fill = fillFor(n);
           return (
             <Marker
               key={n.id}
@@ -95,19 +138,15 @@ export function ChainMap({ nodes, focusId, businesses = [], onNodePress, onBusin
               tracksViewChanges={false}
               onPress={() => {
                 onNodePress?.(n.id);
-                if (showDetails) setOpenId(n.id);
+                if (detailsOn) setOpen({ id: n.id, accent: fill });
               }}
             >
-              <NodeDot
-                fill={n.mine ? palette.navy : NODE_FILLS[(n.depth ?? n.id) % NODE_FILLS.length]}
-                size={highlighted ? 20 : 18}
-                ring={highlighted}
-              />
+              <NodeDot fill={fill} size={highlighted ? 20 : 18} ring={highlighted} />
             </Marker>
           );
         })}
       </MapView>
-      {showDetails && <NodeDetailModal nodeId={openId} onClose={() => setOpenId(null)} />}
+      {detailsOn && <NodeDetailModal nodeId={open?.id ?? null} accent={open?.accent} onClose={() => setOpen(null)} />}
     </View>
   );
 }

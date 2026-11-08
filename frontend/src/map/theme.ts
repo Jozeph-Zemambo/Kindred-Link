@@ -19,6 +19,18 @@ export const OUTLINE = '#1C2030';
 /** Fills cycled across nodes in the chain / tree views, just for colour. */
 export const NODE_FILLS = [palette.yellow, palette.blue, palette.tangerine, palette.cream];
 
+/** Blend colour a toward b (t = 0 → a, 1 → b). Hex in, hex out. */
+export function mix(a: string, b: string, t: number): string {
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [rgb(a), rgb(b)];
+  return `#${x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** Readable text on a palette fill: cream on navy, navy on every bright colour (design rule). */
+export function textOn(fill: string): string {
+  return fill === palette.navy ? palette.cream : palette.navy;
+}
+
 /** Join radius: Blue outline, faint fill. */
 export const RADIUS_STROKE = palette.blue;
 export const RADIUS_FILL = 'rgba(128, 185, 229, 0.12)';

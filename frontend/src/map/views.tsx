@@ -2,43 +2,23 @@ import type { StyleProp, ViewStyle } from 'react-native';
 
 import type { ChainTree } from '@/api/types';
 
-import { ChainMap, type BusinessPin } from './ChainMap';
+import { ChainMap } from './ChainMap';
 import { descendants, lineage } from './graph';
 
 // One component per map view. Screens pass data in and get taps back; the maps never
 // navigate, and any buttons for switching views belong to the screen, not here.
+// Each view zooms itself to fit everything it shows when it opens.
 // (JoinMap, the "find a node to join" view, lives in JoinMap.tsx.)
 
 type TapProps = {
-  /** Called with the tapped node's id. The map opens the act's detail card itself. */
+  /** Handle taps yourself (e.g. navigate). Leave it out and the map opens the act's card. */
   onNodePress?: (id: number) => void;
   style?: StyleProp<ViewStyle>;
 };
 
-/** My kindness: everything that grew out of my latest act. */
-export function MyKindnessMap({
-  tree,
-  latestNodeId,
-  businesses,
-  onBusinessPress,
-  onNodePress,
-  style,
-}: TapProps & {
-  tree: ChainTree;
-  latestNodeId: number;
-  businesses?: BusinessPin[];
-  onBusinessPress?: (id: number) => void;
-}) {
-  return (
-    <ChainMap
-      nodes={descendants(tree.nodes, latestNodeId)}
-      focusId={latestNodeId}
-      businesses={businesses}
-      onBusinessPress={onBusinessPress}
-      onNodePress={onNodePress}
-      style={style}
-    />
-  );
+/** My kindness: only my latest act and everything that grew out of it. No businesses. */
+export function MyKindnessMap({ tree, latestNodeId, onNodePress, style }: TapProps & { tree: ChainTree; latestNodeId: number }) {
+  return <ChainMap nodes={descendants(tree.nodes, latestNodeId)} focusId={latestNodeId} onNodePress={onNodePress} style={style} />;
 }
 
 /** Full chain: every act above the node (back to the start) and every act below it. */

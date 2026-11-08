@@ -39,12 +39,11 @@ export default function MapLab() {
           onJoin={(p) => setJoinedId(p.id)}
         />
       )}
-      {view === 'Mine' && (
-        <MyKindnessMap tree={mockNet} latestNodeId={3} businesses={mockBusinesses} onNodePress={setSelectedId} />
-      )}
-      {view === 'Chain' && <FullChainMap tree={mockNet} nodeId={5} onNodePress={setSelectedId} />}
-      {view === 'Recap line' && <RecapChainMap chain={mockRecap.longestChains[0]} onNodePress={setSelectedId} />}
-      {view === 'Recap net' && <RecapNetMap net={mockRecap.largestNets[0]} onNodePress={setSelectedId} />}
+      {/* Chain views get no onNodePress here, so tapping opens the act card like it will in the app. */}
+      {view === 'Mine' && <MyKindnessMap tree={mockNet} latestNodeId={3} />}
+      {view === 'Chain' && <FullChainMap tree={mockNet} nodeId={5} />}
+      {view === 'Recap line' && <RecapChainMap chain={mockRecap.longestChains[0]} />}
+      {view === 'Recap net' && <RecapNetMap net={mockRecap.largestNets[0]} />}
       <Text style={styles.status}>
         Tapped node: {selectedId ?? 'none'} · Joined: {joinedId ?? 'none'}
       </Text>
