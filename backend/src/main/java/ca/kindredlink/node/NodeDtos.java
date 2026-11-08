@@ -19,6 +19,22 @@ public final class NodeDtos {
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
 
+    /**
+     * Body for POST /api/nodes/{id}/claim. Just the device's real GPS fix, so the server can check
+     * the person is physically near the node before reserving a slot for them.
+     * The @NotNull / @Decimal... lines make Spring reject a missing or impossible coordinate
+     * before our code runs (input validation).
+     */
+    public record ClaimRequest(
+            @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
+            @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
+
+    /**
+     * What the app gets back after a successful claim: when the claim started and the deadline
+     * by which the person must post their act (claimedAt + 12 h). The app shows finishBy as a countdown.
+     */
+    public record ClaimResponse(Instant claimedAt, Instant finishBy) {}
+
     /** A public map pin. Only approximate coordinates. */
     public record NodePin(
             Long id,

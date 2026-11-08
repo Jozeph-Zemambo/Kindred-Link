@@ -3,10 +3,13 @@ package ca.kindredlink.node;
 import ca.kindredlink.KindredProperties;
 import ca.kindredlink.common.ApiException;
 import ca.kindredlink.geo.Geo;
+import ca.kindredlink.node.NodeDtos.ClaimRequest;
+import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import ca.kindredlink.node.NodeDtos.NodePin;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class NodeService {
 
     private final NodeRepository nodes;
+    private final NodeClaimRepository claims; // who has reserved which slot
     private final NodeRules rules;
     private final KindredProperties props;
     private final Clock clock;
 
-    public NodeService(NodeRepository nodes, NodeRules rules, KindredProperties props, Clock clock) {
+    public NodeService(NodeRepository nodes, NodeClaimRepository claims, NodeRules rules,
+            KindredProperties props, Clock clock) {
         this.nodes = nodes;
+        this.claims = claims;
         this.rules = rules;
         this.props = props;
         this.clock = clock;
@@ -68,6 +74,55 @@ public class NodeService {
         KindnessNode root = nodes.save(newNode(null, null, 0, req, deviceId));
         root.setChainId(root.getId());
         return toDetail(root, deviceId);
+    }
+
+    /**
+     * Reserve one of the parent's two slots for this device.
+     *
+     * How the rules fit together:
+     *  - The claim window is 12 h from the PARENT's creation (rules.closesAt).
+     *  - Each claim uses up a slot permanently, finished or not, so a slot whose claimer never
+     *    posts is never handed to someone else.
+     *  - After claiming, the person gets a fresh 12 h (from the claim moment) to post their act.
+     *
+     * Checks run in this order: own node, already claimed, slots/window, distance.
+     */
+    @Transactional
+    public ClaimResponse claim(Long parentId, ClaimRequest req, String deviceId) {
+        // Load the parent AND lock its row. If two people tap "claim" at the same instant, the
+        // database makes them take turns, so both can't grab the last slot.
+        KindnessNode parent = nodes.findByIdForUpdate(parentId)
+                .orElseThrow(() -> ApiException.notFound("Node", parentId));
+        Instant now = clock.instant(); // the Clock bean, so tests can fake the time
+
+        // Rule: you can't claim your own act of kindness.
+        if (parent.getAuthorDeviceId().equals(deviceId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "own_node", "You can't claim your own act of kindness");
+        }
+        // Rule: one claim per person per node (the database enforces this too, via the unique rule).
+        if (claims.findByNodeIdAndDeviceId(parentId, deviceId).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "already_claimed", "You already claimed this node");
+        }
+        // Rule: the claim window (12 h from parent creation) must still be open AND a slot must be
+        // free. countByNodeId counts every claim ever made, finished or not, which is what makes
+        // an abandoned slot stay closed.
+        boolean windowClosed = !now.isBefore(rules.closesAt(parent));
+        boolean noSlotsLeft = claims.countByNodeId(parentId) >= props.node().maxChildren();
+        if (windowClosed || noSlotsLeft) {
+            throw new ApiException(HttpStatus.CONFLICT, "slot_closed",
+                    "No slots left, or the " + props.node().openHours() + " h claim window has closed");
+        }
+        // Rule: be physically near the node. Uses the real GPS fix, never shown to other users.
+        double distance = Geo.distanceMeters(parent.getLat(), parent.getLng(), req.lat(), req.lng());
+        double max = props.continueRules().maxDistanceMeters();
+        if (distance > max) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "too_far",
+                    "You need to be within " + (int) max + " m of this node to claim it");
+        }
+
+        // All rules passed: save the claim and tell the app the finish deadline.
+        claims.save(new NodeClaim(parentId, deviceId, now));
+        return new ClaimResponse(now, now.plus(Duration.ofHours(props.node().openHours())));
     }
 
     /**
