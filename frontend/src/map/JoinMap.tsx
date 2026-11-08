@@ -32,12 +32,14 @@ export type JoinMapProps = {
   onJoin?: (pin: NodePin) => void;
   /** Screen handles pin taps itself (e.g. navigates). If omitted, the map opens the join panel. */
   onPinPress?: (pin: NodePin) => void;
+  /** Screen handles taps on the map surface itself (e.g. navigates). */
+  onMapPress?: () => void;
   /** Screen handles business taps itself. If omitted, the map opens the business panel. */
   onBusinessPress?: (id: number) => void;
   style?: StyleProp<ViewStyle>;
 };
 
-export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [], onJoin, onPinPress, onBusinessPress, style }: JoinMapProps) {
+export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [], onJoin, onPinPress, onMapPress, onBusinessPress, style }: JoinMapProps) {
   const [selected, setSelected] = useState<NodePin | null>(null);
   const [openBusiness, setOpenBusiness] = useState<BusinessPin | null>(null);
   // Mock data lives at UCalgary, so in mock mode keep the radius there instead of the simulator's GPS.
@@ -55,6 +57,7 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         showsUserLocation
+        onPress={() => onMapPress?.()}
         onUserLocationChange={(e) => {
           const c = e.nativeEvent.coordinate;
           if (c) setLive({ lat: c.latitude, lng: c.longitude });
