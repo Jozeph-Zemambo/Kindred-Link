@@ -5,14 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
 
 import { claimNode, continueNode, createNode, getNode, listNearby, uploadPhoto } from '@/api/client';
 import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 import { BottomNav } from '@/components/BottomNav';
-import { getMyLocation, JoinMap, requireMyLocation } from '@/map';
+import { getMyLocation, JoinMap, LocationPicker, requireMyLocation } from '@/map';
 
 const ACTIVE_CLAIM_KEY = '@kindred-link/active-claim';
 type ActiveClaim = { nodeId: number; finishBy: string };
@@ -159,7 +158,7 @@ export default function ExploreScreen() {
           <Text style={styles.fieldLabel}>What did you do?</Text><TextInput value={description} onChangeText={setDescription} placeholder="Share the kind deed" placeholderTextColor="#9AA0B1" multiline style={[styles.input, styles.descriptionInput]} />
           <Text style={styles.fieldLabel}>Add a photo <Text style={styles.optionalText}>optional</Text></Text><View style={styles.photoActions}><Pressable onPress={() => addPhoto('camera')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Take photo</Text></Pressable><Pressable onPress={() => addPhoto('library')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Choose image</Text></Pressable></View>{photoUri && <View style={styles.photoPreviewWrap}><Image source={{ uri: photoUri }} style={styles.photoPreview} /><Pressable onPress={() => setPhotoUri(null)} style={styles.removePhoto}><Text style={styles.removePhotoText}>Remove</Text></Pressable></View>}
           {data.mode === 'log' ? <><Text style={styles.fieldLabel}>Where did it happen?</Text><Text style={styles.locationHint}>Your GPS location will be used. You need to be within 2 km of the act you're continuing.</Text></> : <><Text style={styles.fieldLabel}>Where did it happen?</Text><View style={styles.locationToggle}><Pressable onPress={() => setLocationMode('current')} style={[styles.locationOption, locationMode === 'current' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'current' && styles.locationSelectedText]}>Use current location</Text></Pressable><Pressable onPress={() => setLocationMode('map')} style={[styles.locationOption, locationMode === 'map' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'map' && styles.locationSelectedText]}>Choose on map</Text></Pressable></View>
-          {locationMode === 'current' ? <Text style={styles.locationHint}>Your GPS location will be used when you submit.</Text> : <View style={styles.pickerMap}><MapView style={StyleSheet.absoluteFill} initialRegion={{ latitude: data.me.lat, longitude: data.me.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }} showsUserLocation><Marker coordinate={{ latitude: (mapLocation ?? data.me).lat, longitude: (mapLocation ?? data.me).lng }} draggable onDragEnd={(event) => setMapLocation({ lat: event.nativeEvent.coordinate.latitude, lng: event.nativeEvent.coordinate.longitude })} /></MapView><View style={styles.mapPickerHint}><Text style={styles.mapPickerHintText}>Drag the pin to where it happened</Text></View></View>}</>}
+          {locationMode === 'current' ? <Text style={styles.locationHint}>Your GPS location will be used when you submit.</Text> : <View style={styles.pickerMap}><LocationPicker value={mapLocation ?? data.me} onChange={setMapLocation} /><View style={styles.mapPickerHint}><Text style={styles.mapPickerHintText}>Move the map to where it happened</Text></View></View>}</>}
           <Pressable onPress={submitKindness} disabled={submitting || !description.trim()} style={[styles.submitButton, (submitting || !description.trim()) && styles.submitDisabled]}><Text style={styles.submitText}>{submitting ? 'Saving…' : startMode ? 'Start tree' : 'Log kindness'}</Text></Pressable>
         </ScrollView>
       ) : loading || !claimLoaded || error || !data ? (

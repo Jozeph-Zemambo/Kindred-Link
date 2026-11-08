@@ -19,5 +19,6 @@ export { JoinSheet } from './JoinSheet';
 export { BusinessSheet, roundedPlus } from './BusinessSheet';
 export { SidePanel } from './SidePanel';
 export { NodeDetailModal } from './NodeDetailModal';
+export { LocationPicker } from './LocationPicker';
 export { assetUrl } from './assetUrl';
 export { actsInLineLabel, mostPopular } from './popularity';
