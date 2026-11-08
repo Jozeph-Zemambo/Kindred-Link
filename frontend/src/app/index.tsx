@@ -12,7 +12,7 @@ import { isClerkConfigured } from '@/auth/clerk';
 import { useLoad } from '@/api/useLoad';
 import { BusinessMapStatus } from '@/components/BusinessMapStatus';
 import { LoadState } from '@/components/LoadState';
-import { descendants, getMyLocation, isFindable, JoinMap } from '@/map';
+import { descendants, getMyLocation, JoinMap, openPinsToShow } from '@/map';
 import type { ChainTree, NodePin } from '@/api/types';
 
 const COLORS = {
@@ -182,7 +182,7 @@ export default function HomeScreen() {
   }, [data, period]);
   const visibleTrees = data?.trees.slice(0, 1) ?? [];
   // Same pins the join map draws, so the count matches the dots.
-  const openNearby = data?.nearbyPins.filter(isFindable).length ?? 0;
+  const openNearby = data ? openPinsToShow(data.nearbyPins).length : 0;
   const previousPeriodStart = new Date(period.start);
   previousPeriodStart.setDate(previousPeriodStart.getDate() - 7);
   const hasPreviousPeriodActivity = Boolean(data?.mine.some((node) => {

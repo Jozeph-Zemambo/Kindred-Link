@@ -183,7 +183,7 @@ function mapStubs(ctx, extra) {
     './JoinSheet': { JoinSheet: 'JoinSheet' },
     './NodeDetailModal': { NodeDetailModal: 'NodeDetailModal' },
     './NodeDot': { NodeDot: 'NodeDot' },
-    './findable': { isFindable: () => true },
+    './findable': { isFindable: () => true, openPinsToShow: (pins) => pins },
     './graph': { edges: () => [], hopsFrom: graphMod.hopsFrom },
     './popularity': { mostPopular: () => new Set() },
     './rules': { JOIN_RADIUS_M: 800 },

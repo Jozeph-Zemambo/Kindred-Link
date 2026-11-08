@@ -6,7 +6,7 @@ export { FullChainMap, MyKindnessMap, RecapChainMap, RecapNetMap } from './views
 // Lower-level pieces, if a screen needs something the views above don't cover.
 export { ChainMap } from './ChainMap';
 export type { BusinessPin, ChainMapProps } from './ChainMap';
-export { isFindable, timeLeft } from './findable';
+export { isFindable, openPinsToShow, timeLeft } from './findable';
 export { ancestors, descendants, edges, lineage } from './graph';
 export type { Edge, GraphNode } from './graph';
 export { getMyLocation, requireMyLocation } from './location';
