@@ -13,6 +13,11 @@ spring:
       # Not a substitute for managed migrations (e.g. Flyway) in production.
       ddl-auto: update
     open-in-view: false
+  servlet:
+    multipart:
+      # Photo upload size limit. The phone compresses first, so 5 MB is generous.
+      max-file-size: 5MB
+      max-request-size: 6MB
   mvc:
     # Errors come back as {"status":409,"title":"slot_closed","detail":"..."} (see ApiException).
     problemdetails:
@@ -45,4 +50,9 @@ kindred:
     grid-meters: 250
   business:
     max-checkin-distance-meters: 150
+  moderation:
+    # Secret key moderators send in the X-Admin-Key header to see pending photos and approve or reject
+    # them. Empty means moderation is switched off, so nobody can approve anything. Turn it on by
+    # setting the MODERATOR_KEY environment variable (never commit a real key).
+    admin-key: ${MODERATOR_KEY:}
   seed-demo-data: true

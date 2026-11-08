@@ -11,6 +11,7 @@ import ca.kindredlink.node.KindnessNode;
 import ca.kindredlink.node.NodeClaimRepository;
 import ca.kindredlink.node.NodeRepository;
 import ca.kindredlink.node.NodeRules;
+import ca.kindredlink.photo.PhotoService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -29,14 +31,16 @@ public class ChainService {
 
     private final NodeRepository nodes;
     private final NodeClaimRepository claims; // claims use up slots, so open-slot counts need them
+    private final PhotoService photoService; // which nodes have a photo this viewer may see
     private final NodeRules rules;
     private final KindredProperties props;
     private final Clock clock;
 
-    public ChainService(NodeRepository nodes, NodeClaimRepository claims, NodeRules rules,
-            KindredProperties props, Clock clock) {
+    public ChainService(NodeRepository nodes, NodeClaimRepository claims, PhotoService photoService,
+            NodeRules rules, KindredProperties props, Clock clock) {
         this.nodes = nodes;
         this.claims = claims;
+        this.photoService = photoService;
         this.rules = rules;
         this.props = props;
         this.clock = clock;
@@ -45,9 +49,11 @@ public class ChainService {
     public ChainTree tree(Long chainId, String deviceId) {
         List<KindnessNode> all = load(chainId);
         Map<Long, Integer> slots = openSlots(all);
+        // hasPhoto is true for nodes with an APPROVED photo, for everyone.
+        Set<Long> visiblePhotos = photoService.nodesWithApprovedPhoto(all.stream().map(KindnessNode::getId).toList());
         List<ChainNode> out = all.stream()
                 .map(n -> new ChainNode(n.getId(), n.getParentId(), n.getDepth(), n.getApproxLat(), n.getApproxLng(),
-                        n.getCreatedAt(), slots.get(n.getId()), n.getPhotoUrl() != null,
+                        n.getCreatedAt(), slots.get(n.getId()), visiblePhotos.contains(n.getId()),
                         Objects.equals(n.getAuthorDeviceId(), deviceId)))
                 .toList();
         return new ChainTree(chainId, status(all, slots), out);

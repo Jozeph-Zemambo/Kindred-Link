@@ -8,3 +8,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+# A known moderator key for tests (the real default is empty = moderation off).
+kindred:
+  moderation:
+    admin-key: test-key

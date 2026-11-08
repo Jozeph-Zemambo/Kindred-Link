@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -12,10 +13,14 @@ import java.util.List;
 public final class NodeDtos {
     private NodeDtos() {}
 
-    /** Body for POST /api/nodes and POST /api/nodes/{id}/continue. lat/lng is the device's real GPS fix. */
+    /**
+     * Body for POST /api/nodes and POST /api/nodes/{id}/continue. lat/lng is the device's real GPS fix.
+     * photoId (optional) is the id returned by POST /api/photos. The server checks you uploaded it and
+     * links it to the new node. There is no free-text photo link, so every picture goes through moderation.
+     */
     public record CreateNodeRequest(
             @NotBlank @Size(max = 500) String description,
-            @Size(max = 2000) String photoUrl,
+            @Positive Long photoId,
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
 

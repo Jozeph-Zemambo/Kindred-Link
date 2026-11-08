@@ -8,12 +8,14 @@ import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import ca.kindredlink.node.NodeDtos.NodePin;
+import ca.kindredlink.photo.PhotoService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,14 +27,16 @@ public class NodeService {
 
     private final NodeRepository nodes;
     private final NodeClaimRepository claims; // who has reserved which slot
+    private final PhotoService photoService; // photos attached to nodes, and who may see them
     private final NodeRules rules;
     private final KindredProperties props;
     private final Clock clock;
 
-    public NodeService(NodeRepository nodes, NodeClaimRepository claims, NodeRules rules,
-            KindredProperties props, Clock clock) {
+    public NodeService(NodeRepository nodes, NodeClaimRepository claims, PhotoService photoService,
+            NodeRules rules, KindredProperties props, Clock clock) {
         this.nodes = nodes;
         this.claims = claims;
+        this.photoService = photoService;
         this.rules = rules;
         this.props = props;
         this.clock = clock;
@@ -57,6 +61,8 @@ public class NodeService {
         Map<Long, Long> childCounts = childCounts(found);
         Map<Long, Long> claimCounts = claimCounts(found);
         Map<Long, Instant> chainEnds = chainEnds(found); // 7-day hard stop per chain, one query
+        // Photos: nodes with an APPROVED photo get hasPhoto = true, for everyone, on every map.
+        Set<Long> visiblePhotos = photoService.nodesWithApprovedPhoto(found.stream().map(KindnessNode::getId).toList());
         Instant now = clock.instant();
         return found.stream()
                 .map(n -> {
@@ -67,7 +73,7 @@ public class NodeService {
                             n.getId(), n.getChainId(), n.getParentId(), n.getApproxLat(), n.getApproxLng(),
                             rules.openSlots(rules.usedSlots(claimed, children), now, chainEnd),
                             // A node stays claimable until its chain ends, so that's its closesAt.
-                            n.getCreatedAt(), chainEnd, n.getPhotoUrl() != null,
+                            n.getCreatedAt(), chainEnd, visiblePhotos.contains(n.getId()),
                             Objects.equals(n.getAuthorDeviceId(), deviceId),
                             (int) children);
                 })
@@ -83,6 +89,7 @@ public class NodeService {
     public NodeDetail createRoot(CreateNodeRequest req, String deviceId) {
         KindnessNode root = nodes.save(newNode(null, null, 0, req, deviceId));
         root.setChainId(root.getId());
+        attachPhoto(req, root, deviceId);
         return toDetail(root, deviceId);
     }
 
@@ -187,6 +194,7 @@ public class NodeService {
         // All good: save the new node, then note on the claim that it's finished.
         // (No explicit save for the claim: the transaction writes the change when the method ends.)
         KindnessNode child = nodes.save(newNode(parent.getChainId(), parent.getId(), parent.getDepth() + 1, req, deviceId));
+        attachPhoto(req, child, deviceId); // if the photo is bad, everything above is rolled back
         claim.setChildId(child.getId());
         return toDetail(child, deviceId);
     }
@@ -207,9 +215,20 @@ public class NodeService {
         return chainEnd;
     }
 
+    /**
+     * If the request carries a photoId, link that uploaded photo to the new node. PhotoService checks
+     * the photo exists, belongs to this device and isn't already used. A problem throws an error and the
+     * whole transaction (including the new node) is rolled back.
+     */
+    private void attachPhoto(CreateNodeRequest req, KindnessNode node, String deviceId) {
+        if (req.photoId() != null) {
+            photoService.attach(req.photoId(), node.getId(), deviceId);
+        }
+    }
+
     private KindnessNode newNode(Long chainId, Long parentId, int depth, CreateNodeRequest req, String deviceId) {
         Geo.LatLng approx = Geo.approximate(req.lat(), req.lng(), props.privacy().gridMeters());
-        return new KindnessNode(chainId, parentId, depth, deviceId, req.description().strip(), req.photoUrl(),
+        return new KindnessNode(chainId, parentId, depth, deviceId, req.description().strip(), null, // photos are linked through the photo table, not this old column
                 req.lat(), req.lng(), approx.lat(), approx.lng(), clock.instant());
     }
 
@@ -222,7 +241,9 @@ public class NodeService {
                 .orElseThrow(() -> ApiException.notFound("Chain", n.getChainId()));
         Instant chainEnd = rules.chainEndsAt(root);
         return new NodeDetail(
-                n.getId(), n.getChainId(), n.getParentId(), n.getDepth(), n.getDescription(), n.getPhotoUrl(),
+                n.getId(), n.getChainId(), n.getParentId(), n.getDepth(), n.getDescription(),
+                // The picture's link: only once a moderator has approved it, then everyone gets it.
+                photoService.urlFor(n.getId()),
                 n.getApproxLat(), n.getApproxLng(),
                 rules.openSlots(rules.usedSlots(claims.countByNodeId(n.getId()), childIds.size()),
                         clock.instant(), chainEnd),
