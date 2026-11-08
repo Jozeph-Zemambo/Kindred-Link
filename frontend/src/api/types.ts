@@ -6,11 +6,15 @@
 
 export type CreateNodeRequest = {
   description: string;
-  photoUrl?: string | null;
+  /** Id returned by POST /api/photos; photos are uploaded separately for moderation. */
+  photoId?: number | null;
   /** The device's real GPS fix; the server blurs it before anyone else sees it. */
   lat: number;
   lng: number;
 };
+
+export type PhotoStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type PhotoUploadResponse = { id: number; status: PhotoStatus };
 
 export type NodePin = {
   id: number;

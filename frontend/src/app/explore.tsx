@@ -7,7 +7,7 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
 
-import { claimNode, continueNode, getNode, listNearby } from '@/api/client';
+import { claimNode, continueNode, getNode, listNearby, uploadPhoto } from '@/api/client';
 import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
@@ -90,7 +90,8 @@ export default function ExploreScreen() {
         ? await getMyLocation()
         : mapLocation;
       if (!location) return;
-      await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoUrl: photoUri });
+      const uploadedPhoto = photoUri ? await uploadPhoto(photoUri) : null;
+      await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
       await AsyncStorage.removeItem(ACTIVE_CLAIM_KEY);
       setStoredClaim(null);
       Alert.alert('Kindness logged', 'Your act has been added to the tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(claimedNodeId) } }) }]);
