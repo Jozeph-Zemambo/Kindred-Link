@@ -7,7 +7,7 @@ import { getChain, listMine, listNearby } from '@/api/client';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 import { BottomNav } from '@/components/BottomNav';
-import { descendants, getMyLocation, JoinMap } from '@/map';
+import { descendants, getMyLocation, isFindable, JoinMap } from '@/map';
 import type { ChainTree, NodePin } from '@/api/types';
 
 const COLORS = {
@@ -25,7 +25,7 @@ function formatTimeLeft(timestamp: string, now: number) {
 }
 
 function formatImpact(count: number) {
-  return `${Math.max(5, Math.round(count / 5) * 5)}+ acts`;
+  return `${count} ${count === 1 ? 'act' : 'acts'}`;
 }
 
 function getPeriodWindow(now: number) {
@@ -96,6 +96,8 @@ export default function HomeScreen() {
     return { acts: data.mine.length, trees: new Set(data.mine.map((node) => node.chainId)).size, reach: data.allNodes?.length ?? data.nodes.length };
   }, [data]);
   const visibleTrees = data?.trees.slice(0, 1) ?? [];
+  // Same pins the join map draws, so the count matches the dots.
+  const openNearby = data?.nearbyPins.filter(isFindable).length ?? 0;
   const period = useMemo(() => getPeriodWindow(now), [now]);
   const hasPeriodActivity = Boolean(data?.mine.some((node) => {
     const createdAt = Date.parse(node.createdAt);
@@ -114,7 +116,7 @@ export default function HomeScreen() {
         <View style={styles.actionsRow}><ActionButton label="Start a new tree" primary onPress={() => router.push({ pathname: '/explore', params: { mode: 'start' } })} /><ActionButton label="Find a ripple" onPress={() => router.push('/recap')} /></View>
 
         <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Nearby kindness</Text><Text style={styles.sectionSubtitle}>A little good is happening around you</Text></View><Text style={styles.mapLegend}>● live map</Text></View>
-        {loading || error || !data ? <View style={styles.stateCard}><LoadState error={error} onRetry={reload} /></View> : <Pressable style={styles.mapCard} onPress={() => router.push('/explore')} accessibilityRole="button" accessibilityLabel="Explore nearby kindness"><JoinMap pins={data.nearbyPins} me={data.nearbyMe} onPinPress={() => router.push('/explore')} /><View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{data.nearbyPins.length ? formatImpact(data.nearbyPins.length) : 'No acts nearby'}</Text><Text style={styles.mapOverlayText}>Nearby kindness</Text></View><View style={styles.mapCaption}><Text style={styles.mapCaptionTitle}>Explore nearby kindness</Text><Text style={styles.mapCaptionText}>Tap the map to see more</Text></View></Pressable>}
+        {loading || error || !data ? <View style={styles.stateCard}><LoadState error={error} onRetry={reload} /></View> : <Pressable style={styles.mapCard} onPress={() => router.push('/explore')} accessibilityRole="button" accessibilityLabel="Explore nearby kindness"><JoinMap pins={data.nearbyPins} me={data.nearbyMe} onPinPress={() => router.push('/explore')} /><View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{openNearby ? `${openNearby} open ${openNearby === 1 ? 'act' : 'acts'}` : 'No open acts nearby'}</Text><Text style={styles.mapOverlayText}>Nearby kindness</Text></View><View style={styles.mapCaption}><Text style={styles.mapCaptionTitle}>Explore nearby kindness</Text><Text style={styles.mapCaptionText}>Tap the map to see more</Text></View></Pressable>}
 
         {data?.trees.length ? <View style={styles.section}><View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>My latest tree</Text><Text style={styles.sectionSubtitle}>Updates as your kindness moves</Text></View><Pressable onPress={() => router.push('/trees')}><Text style={styles.textLink}>Open</Text></Pressable></View>{visibleTrees.map((summary) => <Pressable key={summary.chainId} style={styles.treeCard} onPress={() => router.push('/trees')}><View style={styles.treeIcon}><Text style={styles.treeIconText}>↗</Text></View><View style={styles.treeCopy}><Text style={styles.treeTitle}>The tree you’re growing</Text><Text style={styles.treeDescription}>{formatImpact(summary.tree.nodes.length)} growing through this tree</Text><View style={styles.treeMetaRow}><Text style={styles.statusPill}>{summary.tree.status === 'ENDED' ? 'ENDED' : 'GROWING'}</Text><Text style={styles.treeTime}>{formatTimeLeft(summary.latest.closesAt, now)}</Text></View></View><Text style={styles.chevron}>›</Text></Pressable>)}</View> : null}
 
