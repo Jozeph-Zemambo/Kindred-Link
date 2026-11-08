@@ -63,14 +63,16 @@ class FakeFormData {
 
 const platform = { OS: 'android' };
 
-function loadClient({ mocks = false, fetchImpl } = {}) {
+function loadClient({ mocks = false, fetchImpl, token } = {}) {
   const calls = [];
+  const tokenCalls = [];
   const fetch = fetchImpl ?? (async () => ({ ok: true, json: async () => ({}) }));
   const stubs = {
     'expo-file-system': { File: FakeFile },
     'react-native': { Platform: platform },
     './config': { API_URL: 'https://api.test', RECAP_ENDPOINT_READY: false, USE_MOCKS: mocks },
     './deviceId': { getDeviceId: async () => 'dev-test' },
+    '@/auth/token': { getClerkSessionToken: async () => { tokenCalls.push(1); return token ?? null; } },
     '@/map/graph': { ancestors: () => [], descendants: () => [] },
     './mocks': { mockBusinesses: [], mockChain: () => ({}), mockNode: () => ({}), mockPins: () => [], mockStats: () => ({}) },
   };
@@ -81,7 +83,7 @@ function loadClient({ mocks = false, fetchImpl } = {}) {
     },
     FormData: FakeFormData,
   });
-  return { api, calls };
+  return { api, calls, tokenCalls };
 }
 
 // The real SDK 58 converter, with only its blob util stubbed for Node.
@@ -90,10 +92,11 @@ const convertFormDataAsync = loadTs(
   { '../../utils/blobUtils': { blobToArrayBufferAsync: async (blob) => blob.arrayBuffer() } },
 ).convertFormDataAsync;
 
-test('mocks: returns stub response without touching fetch', async () => {
-  const { api, calls } = loadClient({ mocks: true });
+test('mocks: returns stub response without touching fetch or auth', async () => {
+  const { api, calls, tokenCalls } = loadClient({ mocks: true });
   assert.deepEqual(await api.uploadPhoto('file:///x.jpg'), { id: 1, status: 'PENDING' });
   assert.equal(calls.length, 0);
+  assert.equal(tokenCalls.length, 0, 'mock branch returns before any token lookup');
 });
 
 test('native: appends expo-file-system File, not a { uri, name, type } object', async () => {
@@ -179,6 +182,37 @@ test('web: fails fast when the photo source cannot be fetched', async () => {
   } finally {
     platform.OS = 'android';
   }
+});
+
+test('native authenticated upload: Bearer + device id, real File, no Content-Type', async () => {
+  const { api, calls } = loadClient({
+    token: 'session-tok',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ id: 4 }) }),
+  });
+  await api.uploadPhoto('file:///x.png');
+  const [, init] = calls[0];
+  assert.equal(init.headers.Authorization, 'Bearer session-tok');
+  assert.equal(init.headers['X-Device-Id'], 'dev-test');
+  assert.ok(!('Content-Type' in init.headers));
+  assert.ok([...init.body.entries()][0][1] instanceof FakeFile, 'File part preserved with auth');
+});
+
+test('anonymous upload sends no Authorization header', async () => {
+  const { api, calls } = loadClient({ fetchImpl: async () => ({ ok: true, json: async () => ({}) }) });
+  await api.uploadPhoto('file:///x.png');
+  assert.ok(!('Authorization' in calls[0][1].headers), 'null token must not produce a header');
+});
+
+test('JSON requests carry Bearer + device id when a session exists', async () => {
+  const { api, calls } = loadClient({
+    token: 'json-tok',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ id: 5 }) }),
+  });
+  await api.getNode(5);
+  const [, init] = calls[0];
+  assert.equal(init.headers.Authorization, 'Bearer json-tok');
+  assert.equal(init.headers['X-Device-Id'], 'dev-test');
+  assert.equal(init.headers['Content-Type'], 'application/json');
 });
 
 test('api error response propagates as ApiError', async () => {

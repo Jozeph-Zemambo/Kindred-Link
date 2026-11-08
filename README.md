@@ -101,6 +101,41 @@ cd frontend && npm install && npx expo start
 
 Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:8080`.
 
+## Clerk authentication (Google sign-in)
+
+1. In Clerk, enable the Google social connection (configure your own Google OAuth
+   credentials for production), enable **Native API**, and register the Android app
+   with package name `ca.kindredlink`. Add an iOS bundle identifier before shipping
+   an iOS build.
+2. Add the Clerk **publishable key** to `frontend/.env.local`:
+
+   ```dotenv
+   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+   ```
+
+   Restart Expo after changing the environment. The Settings screen opens Clerk's
+   hosted sign-in page; Google sign-in is available when it is enabled in the Clerk
+   Dashboard.
+3. Configure the backend with the issuer and JWKS URL for the same Clerk instance:
+
+   ```powershell
+   $env:CLERK_ENABLED = "true"
+   $env:CLERK_ISSUER = "https://your-instance.clerk.accounts.dev"
+   $env:CLERK_JWKS_URI = "https://your-instance.clerk.accounts.dev/.well-known/jwks.json"
+   ```
+
+   Set `CLERK_ENABLED=true` and those URLs in your deployment environment as well.
+   The issuer must exactly match the `iss` claim in Clerk session tokens. Never put
+   a Clerk secret key in the mobile app.
+
+When enabled, Spring verifies bearer session tokens against Clerk's JWKS and issuer.
+API writes require a valid session. Public map and chain reads, including the existing
+anonymous-device `GET /api/nodes?mine=true` behavior, remain available. The verified
+Clerk subject becomes the identity for node ownership, claims, photos, and check-ins;
+the client-supplied device ID cannot override it on authenticated requests. Anonymous
+mode remains available when Clerk is disabled. Existing anonymous device-owned records
+are not automatically transferred to a Clerk account.
+
 ## API
 
 | Method | Path | Purpose |
@@ -119,7 +154,9 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 | GET | /api/photos/pending | Moderator only (`X-Admin-Key`): photos waiting for a decision |
 | POST | /api/photos/{id}/approve, /reject | Moderator only (`X-Admin-Key`) |
 
-Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
+Anonymous writes use an `X-Device-Id` header. When Clerk is enabled, send the session token
+as `Authorization: Bearer <token>` instead; the Expo API client attaches it automatically
+for signed-in users.
 Game rules (2 slots, 12 h to finish after claiming, 7-day chain limit, distances, privacy grid) are in `backend/src/main/resources/application.yml`.
 
 ## Claim, then continue

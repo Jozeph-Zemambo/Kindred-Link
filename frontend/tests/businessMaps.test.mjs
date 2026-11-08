@@ -197,7 +197,8 @@ const CHAIN_MAP = path.join(root, 'src/map/ChainMap.tsx');
 test('JoinMap: business becomes Marker + BusinessBubble with real pin fields', () => {
   const ctx = makeCtx();
   const { JoinMap } = loadTs(JOIN_MAP, mapStubs(ctx));
-  const tree = JoinMap({ pins: [NODE], me: { lat: 51.05, lng: -114.06 }, businesses: [BIZ] });
+  const mapTaps = [];
+  const tree = JoinMap({ pins: [NODE], me: { lat: 51.05, lng: -114.06 }, businesses: [BIZ], onMapPress: () => mapTaps.push(1) });
   const marker = findAll(tree, 'Marker').find((m) => m.props.title === 'Cafe Kind');
   assert.deepEqual(marker.props.coordinate, { latitude: 0, longitude: 10 });
   const bubble = findOne(marker, 'BusinessBubble');
@@ -215,6 +216,8 @@ test('JoinMap: business becomes Marker + BusinessBubble with real pin fields', (
   map.props.onRegionChange(zoomed);
   map.props.onRegionChangeComplete(zoomed);
   assert.deepEqual([ctx.scaleCalls[1][0], ctx.scaleCalls[2][0]], ['change', 'complete'], 'zoom handlers feed the bubble scale');
+  map.props.onPress();
+  assert.deepEqual(mapTaps, [1], 'map surface tap reaches onMapPress alongside the zoom handlers');
   tree.props.onLayout({ nativeEvent: { layout: { width: 400, height: 300 } } });
   assert.equal(ctx.scaleCalls[3][0], 'layout', 'layout also triggers a measure');
 });
