@@ -41,6 +41,13 @@
           "domain": "dev-axj0j24qp5ihpd8r.us.auth0.com",
           "customScheme": "kindredlink"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Kindred Link to scan a business check-in QR code.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {

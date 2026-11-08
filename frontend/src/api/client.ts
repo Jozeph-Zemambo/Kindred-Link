@@ -5,6 +5,7 @@ import { ancestors, descendants } from '@/map/graph';
 import { mockBusinesses, mockChain, mockNode, mockPins, mockStats } from './mocks';
 import type {
   ApiProblem,
+  Account,
   BusinessHub,
   ChainNode,
   ChainStats,
@@ -115,6 +116,12 @@ export function getChainStats(chainId: number): Promise<ChainStats> {
 export function listBusinesses(): Promise<BusinessHub[]> {
   if (USE_MOCKS) return Promise.resolve(mockBusinesses);
   return request('/api/businesses');
+}
+
+export function getCurrentAccount(accessToken: string): Promise<Account> {
+  return request('/api/auth/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 }
 
 export function checkin(businessId: number, body: CheckinRequest): Promise<CheckinResult> {

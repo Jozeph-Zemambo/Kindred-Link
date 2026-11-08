@@ -38,6 +38,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 After the native build is installed, use `npx expo start --dev-client` for subsequent runs.
 
+On the Home or Explore map, tap a business and choose **Scan QR to check in**. The app reads
+the business's `kindredlink://checkin?business={id}&token={qrToken}` code, obtains the device
+location, and submits both to the backend for verification. Check-in requires camera and
+location permissions and only succeeds within the backend's configured distance from that
+business.
+
 You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ## Get a fresh project

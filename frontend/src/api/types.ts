@@ -153,3 +153,9 @@ export type ApiProblem = {
   title: string;
   detail?: string;
 };
+
+export type Account = {
+  id: number;
+  email: string;
+  createdAt: string;
+};

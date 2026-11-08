@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { claimNode, continueNode, createNode, getNode, listNearby, uploadPhoto } from '@/api/client';
+import { claimNode, continueNode, createNode, getNode, listBusinesses, listNearby, uploadPhoto } from '@/api/client';
 import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
@@ -80,8 +80,11 @@ export default function ExploreScreen() {
       return { mode: 'start' as const, me: await getMyLocation() };
     }
     const me = await getMyLocation();
-    const pins = await listNearby(me.lat, me.lng);
-    return { mode: 'explore' as const, me, pins };
+    const [pins, businesses] = await Promise.all([
+      listNearby(me.lat, me.lng),
+      listBusinesses(),
+    ]);
+    return { mode: 'explore' as const, me, pins, businesses };
   }, [claimLoaded, logMode, startMode, claimedNodeId]);
   useEffect(() => {
     // Only a new tree can be placed on the map; continuing always uses GPS (the backend checks distance).
@@ -165,7 +168,7 @@ export default function ExploreScreen() {
         <LoadState error={error} onRetry={reload} />
       ) : data.mode === 'explore' ? (
         <View style={styles.mapCard}>
-          <JoinMap pins={data.pins} me={data.me} onJoin={handleClaim} />
+          <JoinMap pins={data.pins} me={data.me} businesses={data.businesses} onJoin={handleClaim} />
           <View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>Choose a kindness marker</Text><Text style={styles.mapOverlayText}>Tap a marker to view this tree’s act</Text></View>
           {claiming && <View style={styles.claimingOverlay}><Text style={styles.claimingText}>Claiming node…</Text></View>}
         </View>
