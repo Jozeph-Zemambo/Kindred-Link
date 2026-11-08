@@ -87,7 +87,7 @@ function makeCtx() {
     '@/auth/clerk': { isClerkConfigured: true },
     '@/components/BusinessMapStatus': { BusinessMapStatus: 'BusinessMapStatus' },
     '@/components/LoadState': { LoadState: 'LoadState' },
-    '@/map': { descendants: () => [], getMyLocation: async () => ({ lat: 51, lng: -114 }), isFindable: () => true, JoinMap: 'JoinMap' },
+    '@/map': { descendants: () => [], getMyLocation: async () => ({ lat: 51, lng: -114 }), isFindable: () => true, openPinsToShow: (pins) => pins, JoinMap: 'JoinMap' },
   };
   const screen = loadTs(src('app/index.tsx'), stubs).default;
   return { ctx, biz, screen };

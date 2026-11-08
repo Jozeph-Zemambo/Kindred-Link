@@ -8,7 +8,7 @@ import type { NodePin } from '@/api/types';
 import { BusinessBubble } from './BusinessBubble';
 import { BusinessSheet } from './BusinessSheet';
 import type { BusinessPin } from './ChainMap';
-import { isFindable } from './findable';
+import { openPinsToShow } from './findable';
 import { JoinSheet } from './JoinSheet';
 import { NodeDot } from './NodeDot';
 import { mostPopular } from './popularity';
@@ -46,7 +46,7 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
   // Mock data lives at UCalgary, so in mock mode keep the radius there instead of the simulator's GPS.
   const [live, setLive] = useState<LatLngPoint | null>(null);
   const centre = USE_MOCKS ? me : live ?? me;
-  const findable = useMemo(() => pins.filter((p) => isFindable(p)), [pins]);
+  const findable = useMemo(() => openPinsToShow(pins), [pins]);
   const popular = useMemo(() => mostPopular(findable), [findable]);
 
   const span = (radiusMeters * 2.4) / 111_320;
