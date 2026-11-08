@@ -1,6 +1,8 @@
 package ca.kindredlink.node;
 
 import ca.kindredlink.common.DeviceId;
+import ca.kindredlink.node.NodeDtos.ClaimRequest;
+import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import ca.kindredlink.node.NodeDtos.NodePin;
@@ -52,6 +54,16 @@ public class NodeController {
         return service.createRoot(req, deviceId);
     }
 
+    /** Reserve one of the node's two slots. Returns the deadline to finish your act. */
+    @PostMapping("/{id}/claim")                        // POST /api/nodes/5/claim
+    @ResponseStatus(HttpStatus.CREATED)                // answer with 201
+    public ClaimResponse claim(@PathVariable Long id,  // the 5 from the URL
+            @Valid @RequestBody ClaimRequest req,      // JSON body with lat/lng, validated
+            @RequestHeader(DeviceId.HEADER) String deviceId) {  // who is asking
+        return service.claim(id, req, deviceId);       // all the rules live in the service
+    }
+
+    /** Post your act as the next link. You must have claimed this node first. */
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,

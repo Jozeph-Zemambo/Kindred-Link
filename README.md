@@ -83,7 +83,8 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 | GET | /api/nodes | Public map pins (`?lat&lng&radius`, or `?mine=true`) |
 | GET | /api/nodes/{id} | Node details |
 | POST | /api/nodes | Create an original kindness node |
-| POST | /api/nodes/{id}/continue | Add a child to a chain |
+| POST | /api/nodes/{id}/claim | Reserve one of the node's 2 slots (body: `{lat, lng}`); returns `{claimedAt, finishBy}` |
+| POST | /api/nodes/{id}/continue | Post your act as the next link; requires a claim on that node first |
 | GET | /api/chains/{id} | Entire chain tree |
 | GET | /api/chains/{id}/stats | Chain statistics |
 | GET | /api/businesses | Business hubs |
@@ -91,6 +92,28 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 
 Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
 Game rules (2 children, 12 h window, distances, privacy grid) are in `backend/src/main/resources/application.yml`.
+
+## Claim, then continue
+
+A node has 2 slots. To add a child, a person first **claims** a slot, then **continues**
+(posts their act) before their own deadline.
+
+- A node can be claimed for 12 h after it was created. After that, any unclaimed slot is closed for good.
+- Each claim gets a fresh 12 h from the moment of the claim (`finishBy` in the claim response).
+- A claim uses up its slot even if the person never finishes. An abandoned slot is never given to someone else.
+- You can't claim your own node, can't claim the same node twice, and must be within the allowed distance
+  (checked on the server using the real GPS fix) when you claim and when you continue.
+
+Error codes (the `title` field of the error JSON):
+
+| Code | Meaning |
+|---|---|
+| `slot_closed` | Claim: no slots left, or the claim window has closed |
+| `already_claimed` | Claim: this device already claimed this node. Continue: this device already posted for it |
+| `own_node` | Claim: you can't claim your own node |
+| `too_far` | Claim or continue: you're too far from the node |
+| `no_claim` | Continue: claim this node first |
+| `claim_expired` | Continue: your 12 h to finish ran out, and the slot is gone |
 
 ## Business Bubble Growth
 
