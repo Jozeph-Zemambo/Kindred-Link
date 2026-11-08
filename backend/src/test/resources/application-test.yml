@@ -1,0 +1,15 @@
+# Test-only datasource: isolated in-memory H2, independent of the MySQL defaults.
+spring:
+  datasource:
+    url: jdbc:h2:mem:kindred-test;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+# A known moderator key for tests (the real default is empty = moderation off).
+kindred:
+  moderation:
+    admin-key: test-key

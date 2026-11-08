@@ -1,8 +1,8 @@
 package ca.kindredlink.node;
 
-import ca.kindredlink.auth.AuthenticatedAccount;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.server.ResponseStatusException;
+import ca.kindredlink.common.DeviceId;
+import ca.kindredlink.node.NodeDtos.ClaimRequest;
+import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import ca.kindredlink.node.NodeDtos.NodePin;
@@ -36,29 +36,41 @@ public class NodeController {
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5000") double radius,
             @RequestParam(defaultValue = "false") boolean mine,
-            @AuthenticationPrincipal AuthenticatedAccount account) {
-        if (mine && account == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
-        return service.listPins(lat, lng, radius, mine, account == null ? null : account.identity());
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        String identity = mine ? DeviceId.require(deviceId) : deviceId;
+        return service.listPins(lat, lng, radius, mine, identity);
     }
 
     @GetMapping("/{id}")
     public NodeDetail get(@PathVariable Long id,
-            @AuthenticationPrincipal AuthenticatedAccount account) {
-        return service.get(id, account == null ? null : account.identity());
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.get(id, deviceId);
     }
 
     /** Start a brand-new chain. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail create(@Valid @RequestBody CreateNodeRequest req,
-            @AuthenticationPrincipal AuthenticatedAccount account) {
-        return service.createRoot(req, account.identity());
+            // required = false so Spring doesn't reject a missing header first; DeviceId.require
+            // then gives the clear "bad_device_id" error instead of a generic 400.
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.createRoot(req, DeviceId.require(deviceId));
     }
 
+    /** Reserve one of the node's two slots. Returns the deadline to finish your act. */
+    @PostMapping("/{id}/claim")                        // POST /api/nodes/5/claim
+    @ResponseStatus(HttpStatus.CREATED)                // answer with 201
+    public ClaimResponse claim(@PathVariable Long id,  // the 5 from the URL
+            @Valid @RequestBody ClaimRequest req,      // JSON body with lat/lng, validated
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {  // who is asking
+        return service.claim(id, req, DeviceId.require(deviceId));  // all the rules live in the service
+    }
+
+    /** Post your act as the next link. You must have claimed this node first. */
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,
-            @AuthenticationPrincipal AuthenticatedAccount account) {
-        return service.continueChain(id, req, account.identity());
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.continueChain(id, req, DeviceId.require(deviceId));
     }
 }

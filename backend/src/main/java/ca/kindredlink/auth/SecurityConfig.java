@@ -53,11 +53,10 @@ public class SecurityConfig {
                         response.sendError(401, "Authentication required")))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/login",
-                                "/docs", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**",
+                        .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
+                        .requestMatchers("/api/**").permitAll()
+                        .requestMatchers("/docs", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**",
                                 "/actuator/health", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/nodes", "/api/nodes/**",
-                                "/api/chains/**", "/api/businesses").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new BearerTokenFilter(authService, jwtDecoder),
                         UsernamePasswordAuthenticationFilter.class);

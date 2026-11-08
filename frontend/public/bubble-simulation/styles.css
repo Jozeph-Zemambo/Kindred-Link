@@ -1,0 +1,345 @@
+:root {
+  --ink: #26221c;
+  --ink-soft: #5c5548;
+  --paper: #faf6ee;
+  --canvas: #fffdf7;
+  --teal: #0f766e;
+  --teal-soft: #cdeae5;
+  --amber: #b45309;
+  --amber-soft: #f4dfb6;
+  --coral: #c24b3f;
+  --coral-soft: #f6d5cf;
+  --focus: #0f766e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.25rem 1.5rem 0.75rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.view-toggle { display: flex; gap: 0; border: 1.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+
+.view-toggle button {
+  border: 0;
+  background: var(--canvas);
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+.view-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--canvas); }
+
+.view-toggle button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+.site-header h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.01em;
+}
+
+.site-header p { margin: 0.35rem 0 0; color: var(--ink-soft); max-width: 46rem; }
+
+.lab {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+/* The map world. The Leaflet pane fills the wrap; bubbles are positioned by
+   lat/lng, so nothing needs manual scrolling on desktop. */
+.canvas-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  background: var(--canvas);
+  border: 1px solid #d8d0bf;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.map {
+  width: 100%;
+  height: 640px;
+  border-radius: 0.5rem;
+}
+
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.map-toolbar .check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.map-toolbar .check input { width: 1.05rem; height: 1.05rem; }
+
+.map-toolbar .hint { color: var(--ink-soft); }
+
+.map-toolbar.catalog { align-items: center; }
+.map-toolbar.catalog input {
+  font: inherit;
+  min-width: 12rem;
+  padding: 0.3rem 0.5rem;
+  border: 2px solid #d8d0bf;
+  border-radius: 0.45rem;
+}
+.map-toolbar.catalog button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0.3rem 0.7rem;
+  border: 2px solid #d8d0bf;
+  border-radius: 0.45rem;
+  background: var(--canvas);
+  cursor: pointer;
+}
+
+.map-status { margin: 0.5rem 0 0; }
+
+.caption { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+
+.fit-control {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.fit-control:hover { background: var(--amber-soft); }
+
+/* Business circles are geographic (L.circle, radius in meters); the SVG path
+   is keyboard-focusable. Geographic hit area is NOT inflated for tiny circles -
+   the sidebar rows provide the >=44px targets. */
+.business-circle { cursor: pointer; }
+.business-circle:focus-visible {
+  stroke-width: 6;
+  outline: none;
+}
+
+/* On-demand name/count tooltips must not swallow circle clicks. */
+.bubble-tip {
+  pointer-events: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid #d8d0bf;
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  box-shadow: none;
+}
+.bubble-tip::before { display: none; }
+
+.bubble-tip { max-width: 280px; white-space: normal; }
+
+.tip-note { font-size: 0.75rem; color: var(--ink-soft); margin-top: 0.2rem; }
+
+/* Recency legend swatches, shared by the activity panel and the phone frame. */
+.legend { list-style: none; margin: 0.5rem 0 0; padding: 0; font-size: 0.82rem; color: var(--ink-soft); }
+
+.legend li { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.2rem; }
+
+.swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1.5px solid;
+}
+
+.swatch.fresh { background: #087f78; border-color: #087f78; }
+.swatch.recent { background: #298e88; border-color: #298e88; }
+.swatch.cooling { background: #6d9994; border-color: #6d9994; }
+.swatch.quiet, .swatch.none { background: #9baaa8; border-color: #9baaa8; }
+
+/* Controls sidebar */
+.controls {
+  flex: 0 0 300px;
+  background: var(--canvas);
+  border: 1px solid #d8d0bf;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.controls h2 {
+  margin: 0 0 0.5rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+}
+
+.business-list { list-style: none; margin: 0 0 1rem; padding: 0; }
+.business-list li { margin-bottom: 0.35rem; }
+
+.business-list button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid #d8d0bf;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.business-list button:hover { border-color: var(--ink-soft); }
+.business-list button:focus-visible,
+.controls button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.business-list button[aria-pressed="true"] {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.business-list .count { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.business-list .biz-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  border-radius: 0.3rem;
+}
+.business-list .biz-name { flex: 1 1 auto; }
+
+.hint { margin: 0.25rem 0 0.5rem; font-size: 0.82rem; color: var(--ink-soft); }
+.hint a { color: var(--teal); }
+.coords { font-size: 0.85rem; color: var(--ink-soft); font-weight: 400; }
+
+/* Geocoder panel */
+.geocoder .geo-search {
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  width: 100%;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--teal);
+  border-radius: 0.45rem;
+  background: var(--teal);
+  color: #fff;
+  cursor: pointer;
+}
+.geocoder .geo-search:disabled { opacity: 0.6; cursor: wait; }
+
+.geo-results { list-style: none; margin: 0.5rem 0; padding: 0; }
+.geo-results li { margin-bottom: 0.3rem; }
+.geo-results button {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid #d8d0bf;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+.geo-results button:hover { border-color: var(--teal); }
+
+/* .btn-row's display:flex would override the hidden attribute's display:none. */
+.btn-row[hidden] { display: none; }
+
+#geoPending button {
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-radius: 0.45rem;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+#geoPending button:disabled { opacity: 0.5; }
+
+.panel { border-top: 1px solid #d8d0bf; padding-top: 0.75rem; margin-bottom: 1rem; }
+.panel h2 span { font-size: 0.95rem; color: var(--ink-soft); font-family: inherit; }
+
+.field { margin-bottom: 0.75rem; }
+.field label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+
+.field input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 2px solid #d8d0bf;
+  border-radius: 0.45rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.field input[type="range"] { width: 100%; min-height: 44px; }
+
+.error { margin: 0.3rem 0 0; color: var(--coral); font-size: 0.85rem; font-weight: 600; }
+.field input.invalid { border-color: var(--coral); }
+
+.btn-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.btn-row button, .reset, #recordKindness {
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--ink);
+  border-radius: 0.45rem;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn-row button:hover, .reset:hover, #recordKindness:hover { background: var(--amber-soft); }
+#recordKindness { width: 100%; margin-bottom: 0.75rem; }
+#recordKindness:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.readout { margin: 0 0 0.5rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+.formula { margin: 0; font-size: 0.82rem; color: var(--ink-soft); }
+.formula code { color: var(--ink); }
+
+.reset { width: 100%; }
+
+@media (max-width: 760px) {
+  /* stretch (not flex-start) so the wrap takes viewport width and the map
+     shrinks vertically instead of overflowing the page. */
+  .lab { flex-direction: column; align-items: stretch; padding: 0.75rem; }
+  .controls { flex: none; width: 100%; }
+  .map { height: 420px; }
+}

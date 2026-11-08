@@ -1,0 +1,26 @@
+# Optional convenience MySQL for local demos. Data persists in the mysql_data
+# volume across `docker compose stop` / restarts. All credentials below are
+# local demo defaults only - do not reuse them anywhere else.
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: kindred
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local_root_demo}
+      MYSQL_USER: ${DATABASE_USER:-kindred}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-kindred_demo}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # mysqladmin ping exits 0 once the server accepts connections, even
+      # without credentials - keeps the demo password out of process args.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql_data:

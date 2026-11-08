@@ -1,58 +1,94 @@
 package ca.kindredlink;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import ca.kindredlink.auth.AuthService;
-import ca.kindredlink.auth.AuthUser;
-import ca.kindredlink.auth.AuthUserRepository;
-import ca.kindredlink.common.ApiException;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.beans.factory.annotation.Autowired;
+import ca.kindredlink.business.Business;
+import ca.kindredlink.business.BusinessRepository;
+import ca.kindredlink.business.CheckinRepository;
+import ca.kindredlink.node.NodeRepository;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class BackendApplicationTests {
 	@Autowired
-	private AuthService authService;
+	private DemoData demoData;
+
+	@Autowired
+	private NodeRepository nodes;
+
+	@Autowired
+	private BusinessRepository businesses;
+
+	@Autowired
+	private CheckinRepository checkins;
 
 	@Test
 	void contextLoads() {
 	}
 
 	@Test
-	void provisionsAuth0UsersBySubject() {
-		String suffix = UUID.randomUUID().toString();
-		Jwt jwt = auth0Jwt("google-oauth2|" + suffix, "User+" + suffix + "@Example.com");
+	void demoSeedIsIdempotentAcrossRuns() {
+		long nodeCount = nodes.count();
+		long businessCount = businesses.count();
+		assertTrue(nodeCount > 0, "expected demo nodes to be seeded at startup");
+		assertTrue(businessCount > 0, "expected demo businesses to be seeded at startup");
 
-		var firstLogin = authService.authenticateAuth0(jwt);
-		var secondLogin = authService.authenticateAuth0(jwt);
+		demoData.run(new DefaultApplicationArguments(new String[0]));
+		demoData.run(new DefaultApplicationArguments(new String[0]));
 
-		assertEquals(firstLogin.id(), secondLogin.id());
+		assertEquals(nodeCount, nodes.count());
+		assertEquals(businessCount, businesses.count());
 	}
 
 	@Test
-	void doesNotLinkAuth0UsersToExistingEmailAccounts() {
-		String suffix = UUID.randomUUID().toString();
-		String email = "existing-" + suffix + "@example.com";
-		authUserRepository.saveAndFlush(new AuthUser(email, "unused", Instant.now()));
+	void demoBusinessCatalogMatchesProvidedData() {
+		List<Business> all = businesses.findAll();
+		assertEquals(2, all.size());
 
-		assertThrows(ApiException.class,
-				() -> authService.authenticateAuth0(auth0Jwt("github|" + suffix, email)));
+		Business cinnzeo = onlyByName(all, "Cinnzeo Bakery Cafe");
+		assertEquals(51.07923, cinnzeo.getLat(), 1e-9);
+		assertEquals(-114.127219, cinnzeo.getLng(), 1e-9);
+		assertEquals("/images/businesses/cinnzeo-bakery-cafe.png", cinnzeo.getLogoUrl());
+
+		Business lotus = onlyByName(all, "Lotus Fine Indian Cuisine - Charleswood");
+		assertEquals(51.087303, lotus.getLat(), 1e-9);
+		assertEquals(-114.109781, lotus.getLng(), 1e-9);
+		assertEquals("/images/businesses/lotus-charleswood.png", lotus.getLogoUrl());
+
+		// Tokens must be present, unique, and not derivable from the names.
+		assertFalse(cinnzeo.getQrToken().isBlank());
+		assertFalse(lotus.getQrToken().isBlank());
+		assertNotEquals(cinnzeo.getQrToken(), lotus.getQrToken());
+		assertEquals(0, checkins.count(), "fresh demo starts with zero participation");
 	}
 
-	@Autowired
-	private AuthUserRepository authUserRepository;
-
-	private static Jwt auth0Jwt(String subject, String email) {
-		return Jwt.withTokenValue("test-token")
-				.header("alg", "RS256")
-				.claim("sub", subject)
-				.claim("https://kindredlink.example/email", email)
-				.build();
+	@Test
+	void demoLogosAreBundledPngResources() throws Exception {
+		byte[] pngMagic = { (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
+		for (String path : List.of(
+				"static/images/businesses/cinnzeo-bakery-cafe.png",
+				"static/images/businesses/lotus-charleswood.png")) {
+			ClassPathResource res = new ClassPathResource(path);
+			assertTrue(res.exists(), path + " missing from classpath");
+			assertArrayEquals(pngMagic, res.getInputStream().readNBytes(8), path);
+		}
 	}
+
+	private static Business onlyByName(List<Business> all, String name) {
+		List<Business> hits = all.stream().filter(b -> b.getName().equals(name)).toList();
+		assertEquals(1, hits.size(), "expected exactly one business named " + name);
+		return hits.get(0);
+	}
+
 }
