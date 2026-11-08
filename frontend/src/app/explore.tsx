@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { listNearby } from '@/api/client';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
+import { BottomNav } from '@/components/BottomNav';
 import { getMyLocation, isFindable, JoinMap } from '@/map';
 
 /**
@@ -30,7 +31,7 @@ export default function ExploreScreen() {
         <View>
           <Text style={styles.eyebrow}>EXPLORE KINDNESS</Text>
           <Text style={styles.title}>Find a tree to grow</Text>
-          <Text style={styles.subtitle}>Explore nearby trees, continue an existing act, or start your own.</Text>
+          <Text style={styles.subtitle}>Find a nearby act to continue. See My trees for your weekly tree history and status.</Text>
         </View>
         <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.closeText}>×</Text>
@@ -42,33 +43,16 @@ export default function ExploreScreen() {
       ) : (
         <View style={styles.mapCard}>
           <JoinMap pins={data.pins} me={data.me} onPinPress={(pin) => router.push({ pathname: '/chain/[id]', params: { id: String(pin.id) } })} />
-          <View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{findablePins.length ? formatImpact(findablePins.length) : 'No trees nearby'}</Text><Text style={styles.mapOverlayText}>Nearby kindness · tap an act to continue</Text></View>
+          <View style={styles.mapOverlay}><Text style={styles.mapOverlayTitle}>{findablePins.length ? formatImpact(findablePins.length) : 'No acts nearby'}</Text><Text style={styles.mapOverlayText}>Nearby acts · tap to continue</Text></View>
         </View>
       )}
-      <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem} onPress={() => router.push('/')}>
-          <Text style={styles.navIcon}>⌂</Text>
-          <Text style={styles.navText}>Home</Text>
-        </Pressable>
-        <View style={styles.navItem}>
-          <Text style={styles.navIcon}>◌</Text>
-          <Text style={styles.navActive}>Explore</Text>
-        </View>
-        <Pressable style={styles.navItem} onPress={() => router.push('/recap')}>
-          <Text style={styles.navIcon}>⌁</Text>
-          <Text style={styles.navText}>My trees</Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={() => router.push('/settings')}>
-          <Text style={styles.navIcon}>○</Text>
-          <Text style={styles.navText}>Profile</Text>
-        </Pressable>
-      </View>
+      <BottomNav active="explore" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF9E9', padding: 20 },
+  container: { flex: 1, backgroundColor: '#FFF9E9', padding: 20, paddingBottom: 96 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
   eyebrow: { color: '#F49A68', fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   title: { color: '#303A59', fontSize: 25, fontWeight: '800', marginTop: 6 },
@@ -79,9 +63,4 @@ const styles = StyleSheet.create({
   mapOverlay: { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
   mapOverlayTitle: { color: '#303A59', fontSize: 13, fontWeight: '800' },
   mapOverlayText: { color: '#6C748A', fontSize: 10, marginTop: 2 },
-  bottomNav: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#FFFFFF', borderRadius: 20, marginTop: 18, paddingVertical: 12, borderWidth: 1, borderColor: '#E9DEC4' },
-  navItem: { alignItems: 'center', minWidth: 55 },
-  navIcon: { color: '#303A59', fontSize: 19, lineHeight: 22 },
-  navActive: { color: '#F49A68', fontSize: 10, fontWeight: '800', marginTop: 3 },
-  navText: { color: '#6C748A', fontSize: 10, marginTop: 3 },
 });
