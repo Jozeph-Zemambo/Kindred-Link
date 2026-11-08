@@ -4,8 +4,8 @@ import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 
 /**
- * There are no accounts yet. Each install generates a random id and sends it as this header,
- * which is enough to answer "which nodes are mine". Swap for real auth later.
+ * Legacy validation helper for demo data and old unit tests. Production HTTP endpoints
+ * now derive user identity from verified Auth0 JWTs; this header is NEVER trusted.
  */
 public final class DeviceId {
     public static final String HEADER = "X-Device-Id";

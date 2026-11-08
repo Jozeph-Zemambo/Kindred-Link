@@ -13,3 +13,8 @@ spring:
 kindred:
   moderation:
     admin-key: test-key
+
+# Local/test issuer; no network connection is required unless a signed JWT is presented.
+auth0:
+  domain: auth.example.test
+  audience: https://api.kindredlink.test

@@ -1,5 +1,5 @@
 import { API_URL, RECAP_ENDPOINT_READY, USE_MOCKS } from './config';
-import { getDeviceId } from './deviceId';
+import { getAccessToken } from './authToken';
 import { mockBusinesses, mockChain, mockNode, mockPins, mockRecap, mockStats } from './mocks';
 import type {
   ApiProblem,
@@ -23,11 +23,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await getAccessToken();
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-Device-Id': await getDeviceId(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
   });

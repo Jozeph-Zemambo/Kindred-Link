@@ -1,6 +1,6 @@
 package ca.kindredlink.node;
 
-import ca.kindredlink.common.DeviceId;
+import ca.kindredlink.security.AuthenticatedUser;
 import ca.kindredlink.node.NodeDtos.ClaimRequest;
 import ca.kindredlink.node.NodeDtos.ClaimResponse;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -29,31 +31,30 @@ public class NodeController {
         this.service = service;
     }
 
-    /** Public map pins. Pass lat/lng to limit to a radius; pass mine=true for "my acts". */
+    /** Public map pins. Pass lat/lng to limit to a radius; mine=true requires login. */
     @GetMapping
     public List<NodePin> list(
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5000") double radius,
             @RequestParam(defaultValue = "false") boolean mine,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.listPins(lat, lng, radius, mine, deviceId);
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.listPins(lat, lng, radius, mine,
+                mine ? AuthenticatedUser.require(jwt) : AuthenticatedUser.optional(jwt));
     }
 
     @GetMapping("/{id}")
     public NodeDetail get(@PathVariable Long id,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.get(id, deviceId);
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.get(id, AuthenticatedUser.optional(jwt));
     }
 
     /** Start a brand-new chain. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail create(@Valid @RequestBody CreateNodeRequest req,
-            // required = false so Spring doesn't reject a missing header first; DeviceId.require
-            // then gives the clear "bad_device_id" error instead of a generic 400.
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.createRoot(req, DeviceId.require(deviceId));
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.createRoot(req, AuthenticatedUser.require(jwt));
     }
 
     /** Reserve one of the node's two slots. Returns the deadline to finish your act. */
@@ -61,15 +62,15 @@ public class NodeController {
     @ResponseStatus(HttpStatus.CREATED)                // answer with 201
     public ClaimResponse claim(@PathVariable Long id,  // the 5 from the URL
             @Valid @RequestBody ClaimRequest req,      // JSON body with lat/lng, validated
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {  // who is asking
-        return service.claim(id, req, DeviceId.require(deviceId));  // all the rules live in the service
+            @AuthenticationPrincipal Jwt jwt) {  // authenticated Auth0 user
+        return service.claim(id, req, AuthenticatedUser.require(jwt));  // all the rules live in the service
     }
 
     /** Post your act as the next link. You must have claimed this node first. */
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
-        return service.continueChain(id, req, DeviceId.require(deviceId));
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.continueChain(id, req, AuthenticatedUser.require(jwt));
     }
 }
