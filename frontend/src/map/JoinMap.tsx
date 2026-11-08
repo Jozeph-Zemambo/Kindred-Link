@@ -62,7 +62,6 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
         initialRegion={region}
         onMapReady={bubbleScale.onMapReady}
         showsUserLocation
-        onRegionChange={bubbleScale.onRegionChange}
         onRegionChangeComplete={bubbleScale.onRegionChangeComplete}
         onPress={() => onMapPress?.()}
         onUserLocationChange={(e) => {
@@ -80,7 +79,8 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
         />
         {businesses.map((b) => (
           <Marker
-            key={`biz-${b.id}`}
+            // Re-mount when the size changes so the native marker re-centres on its spot.
+            key={`biz-${b.id}-${Math.round(bubbleScale.mapScale * 100)}`}
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}

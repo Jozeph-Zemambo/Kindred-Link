@@ -214,13 +214,13 @@ test('JoinMap: business becomes Marker + BusinessBubble with real pin fields', (
   map.props.onMapReady();
   assert.equal(ctx.scaleCalls[0][0], 'ready', 'map ready triggers the first measure');
   const zoomed = { latitude: 0, longitude: 0, latitudeDelta: 0.01, longitudeDelta: 0.01 };
-  map.props.onRegionChange(zoomed);
+  assert.equal(map.props.onRegionChange, undefined, 'no mid-gesture resizing (it made bubbles drift off their spot)');
   map.props.onRegionChangeComplete(zoomed);
-  assert.deepEqual([ctx.scaleCalls[1][0], ctx.scaleCalls[2][0]], ['change', 'complete'], 'zoom handlers feed the bubble scale');
+  assert.equal(ctx.scaleCalls[1][0], 'complete', 'zoom end feeds the bubble scale');
   map.props.onPress();
   assert.deepEqual(mapTaps, [1], 'map surface tap reaches onMapPress alongside the zoom handlers');
   tree.props.onLayout({ nativeEvent: { layout: { width: 400, height: 300 } } });
-  assert.equal(ctx.scaleCalls[3][0], 'layout', 'layout also triggers a measure');
+  assert.equal(ctx.scaleCalls[2][0], 'layout', 'layout also triggers a measure');
 });
 
 test('JoinMap: business tap opens BusinessSheet; override gets id; node tap still reports', () => {
@@ -278,8 +278,9 @@ test('ChainMap: business becomes Marker + BusinessBubble, tap opens sheet, node 
   const map = findOne(tree, 'MapView');
   map.props.onMapReady();
   assert.equal(ctx.scaleCalls[0][0], 'ready', 'map ready triggers the measure after fit');
-  map.props.onRegionChange({ latitude: 0, longitude: 0, latitudeDelta: 0.01, longitudeDelta: 0.01 });
-  assert.equal(ctx.scaleCalls[1][0], 'change', 'zoom handler feeds the bubble scale');
+  assert.equal(map.props.onRegionChange, undefined, 'no mid-gesture resizing (it made bubbles drift off their spot)');
+  map.props.onRegionChangeComplete({ latitude: 0, longitude: 0, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+  assert.equal(ctx.scaleCalls[1][0], 'complete', 'zoom end feeds the bubble scale');
   tree.props.onLayout({ nativeEvent: { layout: { width: 400, height: 300 } } });
   assert.equal(ctx.scaleCalls[2][0], 'layout');
   marker.props.onPress();

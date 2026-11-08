@@ -234,7 +234,6 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         onMapReady={onMapReady}
-        onRegionChange={bubbleScale.onRegionChange}
         onRegionChangeComplete={bubbleScale.onRegionChangeComplete}
         showsUserLocation
         {...BASE_MAP}
@@ -251,9 +250,11 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
             lineCap="round"
           />
         ))}
-        {businesses.map((b) => (
+        {/* Businesses join once the tree has drawn itself in, so the draw-in is just the tree. */}
+        {(!plan || frontier === Infinity) && businesses.map((b) => (
           <Marker
-            key={`biz-${b.id}`}
+            // Re-mount when the size changes so the native marker re-centres on its spot.
+            key={`biz-${b.id}-${Math.round(bubbleScale.mapScale * 100)}`}
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}
