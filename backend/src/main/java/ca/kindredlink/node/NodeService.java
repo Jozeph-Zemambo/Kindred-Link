@@ -65,8 +65,9 @@ public class NodeService {
                     Instant chainEnd = chainEnds.get(n.getChainId());
                     return new NodePin(
                             n.getId(), n.getChainId(), n.getParentId(), n.getApproxLat(), n.getApproxLng(),
-                            rules.openSlots(n, rules.usedSlots(claimed, children), now, chainEnd),
-                            n.getCreatedAt(), rules.closesAt(n, chainEnd), n.getPhotoUrl() != null,
+                            rules.openSlots(rules.usedSlots(claimed, children), now, chainEnd),
+                            // A node stays claimable until its chain ends, so that's its closesAt.
+                            n.getCreatedAt(), chainEnd, n.getPhotoUrl() != null,
                             Objects.equals(n.getAuthorDeviceId(), deviceId),
                             (int) children);
                 })
@@ -89,12 +90,13 @@ public class NodeService {
      * Reserve one of the parent's two slots for this device.
      *
      * How the rules fit together:
-     *  - The claim window is 12 h from the PARENT's creation (rules.closesAt).
+     *  - A node can be claimed any time until its CHAIN ends (7 days after the chain's first node),
+     *    not for a fixed 12 h. A node made with 3 days left on its chain stays open for 3 days.
      *  - Each claim uses up a slot permanently, finished or not, so a slot whose claimer never
      *    posts is never handed to someone else.
-     *  - After claiming, the person gets a fresh 12 h (from the claim moment) to post their act.
+     *  - The moment you claim, you get 12 h (finishHours) to post your act, capped at the chain's end.
      *
-     * Checks run in this order: own node, already claimed, slots/window, distance.
+     * Checks run in this order: chain still open, own node, already claimed, slots left, distance.
      */
     @Transactional
     public ClaimResponse claim(Long parentId, ClaimRequest req, String deviceId) {
@@ -116,17 +118,14 @@ public class NodeService {
         if (claims.findByNodeIdAndDeviceId(parentId, deviceId).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "already_claimed", "You already claimed this node");
         }
-        // Rule: the claim window (12 h from parent creation) must still be open AND a slot must be
-        // free. countByNodeId counts every claim ever made, finished or not, which is what makes
-        // an abandoned slot stay closed.
-        boolean windowClosed = !now.isBefore(rules.closesAt(parent));
+        // Rule: a slot must be free. countByNodeId counts every claim ever made, finished or not,
+        // which is what makes an abandoned slot stay closed. (There is no separate claim window any
+        // more: the chain-still-open check above is the only time limit on claiming.)
         // A slot is used if someone claimed it OR a child already exists (demo data has children but
         // no claims). rules.usedSlots() is the same helper the map pins use, so the pin and this rule agree.
         long used = rules.usedSlots(claims.countByNodeId(parentId), nodes.countByParentId(parentId));
-        boolean noSlotsLeft = used >= props.node().maxChildren();
-        if (windowClosed || noSlotsLeft) {
-            throw new ApiException(HttpStatus.CONFLICT, "slot_closed",
-                    "No slots left, or the " + props.node().openHours() + " h claim window has closed");
+        if (used >= props.node().maxChildren()) {
+            throw new ApiException(HttpStatus.CONFLICT, "slot_closed", "No slots left on this node");
         }
         // Rule: be physically near the node. Uses the real GPS fix, never shown to other users.
         double distance = Geo.distanceMeters(parent.getLat(), parent.getLng(), req.lat(), req.lng());
@@ -136,12 +135,12 @@ public class NodeService {
                     "You need to be within " + (int) max + " m of this node to claim it");
         }
 
-        // All rules passed: save the claim and tell the app the finish deadline. That's 12 h from now,
-        // unless the chain's 7-day hard stop comes first, so the app never promises time that
-        // doesn't exist.
+        // All rules passed: save the claim and tell the app the finish deadline. That's 12 h from now
+        // (finishHours), unless the chain's 7-day hard stop comes first, so the app never promises
+        // time that doesn't exist.
         claims.save(new NodeClaim(parentId, deviceId, now));
-        Instant twelveHoursFromNow = now.plus(Duration.ofHours(props.node().openHours()));
-        Instant finishBy = twelveHoursFromNow.isBefore(chainEnd) ? twelveHoursFromNow : chainEnd;
+        Instant finishWindowEnd = now.plus(Duration.ofHours(props.node().finishHours()));
+        Instant finishBy = finishWindowEnd.isBefore(chainEnd) ? finishWindowEnd : chainEnd;
         return new ClaimResponse(now, finishBy);
     }
 
@@ -171,10 +170,10 @@ public class NodeService {
         }
 
         // Their personal 12 hours start the moment they claimed. Too late means the slot is lost for good.
-        Instant deadline = claim.getClaimedAt().plus(Duration.ofHours(props.node().openHours()));
+        Instant deadline = claim.getClaimedAt().plus(Duration.ofHours(props.node().finishHours()));
         if (!now.isBefore(deadline)) {
             throw new ApiException(HttpStatus.CONFLICT, "claim_expired",
-                    "Your " + props.node().openHours() + " h to finish ran out, so this slot is closed");
+                    "Your " + props.node().finishHours() + " h to finish ran out, so this slot is closed");
         }
 
         // Still be near the node when you post, not just when you claimed.
@@ -225,9 +224,10 @@ public class NodeService {
         return new NodeDetail(
                 n.getId(), n.getChainId(), n.getParentId(), n.getDepth(), n.getDescription(), n.getPhotoUrl(),
                 n.getApproxLat(), n.getApproxLng(),
-                rules.openSlots(n, rules.usedSlots(claims.countByNodeId(n.getId()), childIds.size()),
+                rules.openSlots(rules.usedSlots(claims.countByNodeId(n.getId()), childIds.size()),
                         clock.instant(), chainEnd),
-                n.getCreatedAt(), rules.closesAt(n, chainEnd), childIds,
+                n.getCreatedAt(), chainEnd, childIds, // closesAt = the chain's end
+
                 Objects.equals(n.getAuthorDeviceId(), deviceId));
     }
 

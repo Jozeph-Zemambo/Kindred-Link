@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 
-/** Tests the 12 h window by moving a fake clock forward instead of waiting. */
+/** Tests the 12 h finish deadline (after claiming) and the 7-day chain limit by moving a fake clock forward. */
 @SpringBootTest
 @ActiveProfiles("test")
 class NodeWindowTest {

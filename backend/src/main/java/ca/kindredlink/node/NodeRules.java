@@ -8,9 +8,14 @@ import org.springframework.stereotype.Component;
 /**
  * The branching rule, in one place.
  *
- * Reading of the spec used here: a node accepts up to {@code maxChildren} (2) continuations, and
- * only within {@code openHours} (12) of being created. When the window closes, any unfilled slot is
- * gone for good, so a node that got one child in time stays at one child.
+ * A node has up to {@code maxChildren} (2) slots. A slot stays claimable until the CHAIN ends
+ * (chainEndsAt), not for a fixed 12 h: a node created with 3 days left on its chain stays open for
+ * those 3 days.
+ *
+ * The {@code finishHours} (12) start only when someone claims a slot. That is their deadline to post
+ * their act (capped at the chain's end, see NodeService.claim). A claim uses its slot for good,
+ * finished or not, so a slot whose claimer runs out of time is never handed to someone else and the
+ * node just ends up with fewer children.
  *
  * Slots are taken by claims (see NodeService.claim). Both NodeService (pins, claim rule) and
  * ChainService (chain map, chain status) count used slots with usedSlots() below, so they agree.
@@ -24,35 +29,22 @@ public class NodeRules {
         this.props = props;
     }
 
-    public Instant closesAt(KindnessNode node) {
-        return node.getCreatedAt().plus(Duration.ofHours(props.node().openHours()));
-    }
-
     /**
      * The moment a whole chain stops accepting links: maxDays (7) after its first (root) node was
      * created. After this, nobody can claim or post in the chain, even if people are still linking.
+     * It is also when every node in the chain stops taking claims (the "closesAt" the app shows).
      */
     public Instant chainEndsAt(KindnessNode root) {
         return root.getCreatedAt().plus(Duration.ofDays(props.chain().maxDays()));
     }
 
     /**
-     * When this node really stops taking claims: its own 12 h window, or the chain's 7-day hard
-     * stop ({@code chainEnd}, from chainEndsAt(root)), whichever comes first. This is the closesAt
-     * the app shows as a countdown, so it must never promise time past the chain's end.
-     */
-    public Instant closesAt(KindnessNode node, Instant chainEnd) {
-        Instant ownWindow = closesAt(node);
-        return ownWindow.isBefore(chainEnd) ? ownWindow : chainEnd;
-    }
-
-    /**
      * How many slots can still be claimed. {@code slotsUsed} is the number of slots already taken
-     * (claimed, whether or not the claimer finished). Zero once the node's 12 h window or the
-     * chain's 7-day hard stop has passed, so the map never shows a node that claim() would reject.
+     * (claimed, whether or not the claimer finished). Zero once the chain's 7-day hard stop has
+     * passed, so the map never shows a node that claim() would reject.
      */
-    public int openSlots(KindnessNode node, long slotsUsed, Instant now, Instant chainEnd) {
-        if (!now.isBefore(closesAt(node, chainEnd))) {
+    public int openSlots(long slotsUsed, Instant now, Instant chainEnd) {
+        if (!now.isBefore(chainEnd)) {
             return 0;
         }
         return (int) Math.max(0, props.node().maxChildren() - slotsUsed);

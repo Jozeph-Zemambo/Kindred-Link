@@ -116,7 +116,7 @@ public class ChainService {
 
         Instant now = clock.instant();
         return all.stream().collect(Collectors.toMap(KindnessNode::getId,
-                n -> rules.openSlots(n, rules.usedSlots(
+                n -> rules.openSlots(rules.usedSlots(
                         claimCounts.getOrDefault(n.getId(), 0L),
                         childCounts.getOrDefault(n.getId(), 0L)), now, chainEnd)));
     }
