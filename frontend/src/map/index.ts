@@ -16,5 +16,7 @@ export { palette } from './theme';
 export { NodeDot } from './NodeDot';
 export { BusinessBubble, bubbleSize } from './BusinessBubble';
 export { JoinSheet } from './JoinSheet';
+export { BusinessSheet, roundedPlus } from './BusinessSheet';
+export { SidePanel } from './SidePanel';
 export { NodeDetailModal } from './NodeDetailModal';
 export { actsInLineLabel, mostPopular } from './popularity';
