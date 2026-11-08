@@ -50,8 +50,10 @@ public class NodeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail create(@Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(DeviceId.HEADER) String deviceId) {
-        return service.createRoot(req, deviceId);
+            // required = false so Spring doesn't reject a missing header first; DeviceId.require
+            // then gives the clear "bad_device_id" error instead of a generic 400.
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.createRoot(req, DeviceId.require(deviceId));
     }
 
     /** Reserve one of the node's two slots. Returns the deadline to finish your act. */
@@ -59,15 +61,15 @@ public class NodeController {
     @ResponseStatus(HttpStatus.CREATED)                // answer with 201
     public ClaimResponse claim(@PathVariable Long id,  // the 5 from the URL
             @Valid @RequestBody ClaimRequest req,      // JSON body with lat/lng, validated
-            @RequestHeader(DeviceId.HEADER) String deviceId) {  // who is asking
-        return service.claim(id, req, deviceId);       // all the rules live in the service
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {  // who is asking
+        return service.claim(id, req, DeviceId.require(deviceId));  // all the rules live in the service
     }
 
     /** Post your act as the next link. You must have claimed this node first. */
     @PostMapping("/{id}/continue")
     @ResponseStatus(HttpStatus.CREATED)
     public NodeDetail continueChain(@PathVariable Long id, @Valid @RequestBody CreateNodeRequest req,
-            @RequestHeader(DeviceId.HEADER) String deviceId) {
-        return service.continueChain(id, req, deviceId);
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.continueChain(id, req, DeviceId.require(deviceId));
     }
 }

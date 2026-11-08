@@ -112,6 +112,7 @@ Error codes (the `title` field of the error JSON):
 
 | Code | Meaning |
 |---|---|
+| `bad_device_id` | Any write (create, claim, continue, check-in): `X-Device-Id` is missing, blank, over 100 characters, or has characters other than letters, digits and `. _ : -` |
 | `slot_closed` | Claim: no slots left, or the claim window has closed |
 | `already_claimed` | Claim: this device already claimed this node. Continue: this device already posted for it |
 | `own_node` | Claim: you can't claim your own node |
