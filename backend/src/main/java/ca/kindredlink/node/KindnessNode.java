@@ -1,5 +1,7 @@
 package ca.kindredlink.node;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -7,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import java.time.Instant;
 
 /**
  * One act of kindness. A chain is the tree of nodes under a root; {@code chainId} is the root's id.
