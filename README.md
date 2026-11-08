@@ -16,14 +16,26 @@ cd backend && ./mvnw spring-boot:run
 ```
 
 API on http://localhost:8080, interactive docs at http://localhost:8080/docs.
+The API validates Auth0 access tokens for `https://api.kindredlink.example`. Set
+`AUTH0_ISSUER_URI` and `AUTH0_AUDIENCE` to override the defaults in
+`backend/src/main/resources/application.yml`.
 
 Frontend:
 
 ```bash
-cd frontend && npm install && npx expo start
+cd frontend && npm install
 ```
 
-Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:8080`.
+Set up the Auth0 Native application and environment in [frontend/README.md](frontend/README.md), then
+run `npx expo run:android` or `npx expo run:ios`. Auth0 native login requires a custom development
+build; it does not run in Expo Go. For a physical device, set `EXPO_PUBLIC_API_URL` to
+`http://<laptop-LAN-IP>:8080`.
+
+The app's native login buttons use Auth0 Universal Login with the Google and GitHub connections.
+Enable both connections for the Native application in the Auth0 Dashboard, install the Post Login
+Action documented in `frontend/README.md`, and configure GitHub to return the user's email. The
+existing email/password API endpoints remain available; Auth0 users are provisioned as backend
+accounts on their first authenticated API request. Accounts are not automatically linked by email.
 
 ## API
 
@@ -38,5 +50,5 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 | GET | /api/businesses | Business hubs |
 | POST | /api/businesses/{id}/checkin | Verified QR participation |
 
-Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
+Protected API writes require a valid Auth0 access token (or an existing local bearer session token).
 Game rules (2 children, 12 h window, distances, privacy grid) are in `backend/src/main/resources/application.yml`.

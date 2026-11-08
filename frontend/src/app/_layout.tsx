@@ -1,18 +1,30 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { Auth0Provider } from 'react-native-auth0';
+import { Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+function AppRoutes() {
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
 
-SplashScreen.preventAutoHideAsync();
+export default function RootLayout() {
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaProvider>
+        <AppRoutes />
+      </SafeAreaProvider>
+    );
+  }
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Auth0Provider
+      domain={process.env.EXPO_PUBLIC_AUTH0_DOMAIN!}
+      clientId={process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID!}
+      useDPoP={false}
+    >
+      <SafeAreaProvider>
+        <AppRoutes />
+      </SafeAreaProvider>
+    </Auth0Provider>
   );
 }

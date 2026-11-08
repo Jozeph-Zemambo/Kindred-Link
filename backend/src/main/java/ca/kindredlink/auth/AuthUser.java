@@ -22,19 +22,30 @@ public class AuthUser {
     @Column(nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(name = "auth0_subject", unique = true, length = 255)
+    private String auth0Subject;
+
     @Column(nullable = false)
     private Instant createdAt;
 
     protected AuthUser() {}
 
     public AuthUser(String email, String passwordHash, Instant createdAt) {
+        this(email, passwordHash, createdAt, null);
+    }
+
+    public AuthUser(String email, String passwordHash, Instant createdAt, String auth0Subject) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.createdAt = createdAt;
+        this.auth0Subject = auth0Subject;
     }
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
+    public String getAuth0Subject() { return auth0Subject; }
     public Instant getCreatedAt() { return createdAt; }
+
+    public void setEmail(String email) { this.email = email; }
 }

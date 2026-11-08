@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,6 +96,43 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthenticatedAccount authenticateAuth0(Jwt jwt) {
+        String subject = jwt.getSubject();
+        String emailClaim = jwt.getClaimAsString("https://kindredlink.example/email");
+        if (subject == null || subject.isBlank() || emailClaim == null || emailClaim.isBlank()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_auth0_profile",
+                    "The Auth0 access token must include a subject and the Kindred Link email claim");
+        }
+
+        String email = normalizeEmail(emailClaim);
+        Optional<AuthUser> existing = users.findByAuth0Subject(subject);
+        if (existing.isPresent()) {
+            AuthUser user = existing.get();
+            if (!user.getEmail().equals(email)) {
+                if (users.existsByEmail(email)) {
+                    throw emailConflict();
+                }
+                user.setEmail(email);
+            }
+            return new AuthenticatedAccount(users.save(user).getId());
+        }
+        if (users.existsByEmail(email)) {
+            throw emailConflict();
+        }
+
+        byte[] randomPassword = new byte[32];
+        RANDOM.nextBytes(randomPassword);
+        String unusablePassword = Base64.getUrlEncoder().withoutPadding().encodeToString(randomPassword);
+        try {
+            AuthUser user = users.saveAndFlush(new AuthUser(
+                    email, passwords.encode(unusablePassword), clock.instant(), subject));
+            return new AuthenticatedAccount(user.getId());
+        } catch (DataIntegrityViolationException exception) {
+            throw emailConflict();
+        }
+    }
+
+    @Transactional
     public void logout(String rawToken) {
         sessions.deleteByTokenHash(hash(rawToken));
     }
@@ -120,5 +158,10 @@ public class AuthService {
 
     private static String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static ApiException emailConflict() {
+        return new ApiException(HttpStatus.CONFLICT, "email_exists",
+                "This email belongs to another account. Account linking is not automatic.");
     }
 }

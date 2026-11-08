@@ -25,6 +25,10 @@ springdoc:
   swagger-ui:
     path: /docs
 
+auth0:
+  issuer-uri: ${AUTH0_ISSUER_URI:https://dev-axj0j24qp5ihpd8r.us.auth0.com/}
+  audience: ${AUTH0_AUDIENCE:https://api.kindredlink.example}
+
 # Game rules. Tune here, not in code.
 kindred:
   node:

@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
-/** Click Authorize in /docs and paste only the accessToken from /api/auth/login. */
+/** Use an Auth0 access token for this API, or a token from /api/auth/login. */
 @OpenAPIDefinition(security = @SecurityRequirement(name = "bearerAuth"))
 @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP,
-        scheme = "bearer", bearerFormat = "opaque")
+        scheme = "bearer", bearerFormat = "JWT")
 @Configuration
 public class OpenApiAuthConfig {}

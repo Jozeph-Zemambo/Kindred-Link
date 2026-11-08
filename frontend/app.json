@@ -5,12 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "kindredlink",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "ca.kindredlink.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "ca.kindredlink.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -31,6 +33,13 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "react-native-auth0",
+        {
+          "domain": "dev-axj0j24qp5ihpd8r.us.auth0.com",
+          "customScheme": "kindredlink"
         }
       ]
     ],
