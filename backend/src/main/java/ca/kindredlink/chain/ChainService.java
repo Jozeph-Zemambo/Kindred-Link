@@ -8,6 +8,7 @@ import ca.kindredlink.chain.ChainDtos.ChainTree;
 import ca.kindredlink.common.ApiException;
 import ca.kindredlink.geo.Geo;
 import ca.kindredlink.node.KindnessNode;
+import ca.kindredlink.node.NodeClaimRepository;
 import ca.kindredlink.node.NodeRepository;
 import ca.kindredlink.node.NodeRules;
 import java.time.Clock;
@@ -27,12 +28,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChainService {
 
     private final NodeRepository nodes;
+    private final NodeClaimRepository claims; // claims use up slots, so open-slot counts need them
     private final NodeRules rules;
     private final KindredProperties props;
     private final Clock clock;
 
-    public ChainService(NodeRepository nodes, NodeRules rules, KindredProperties props, Clock clock) {
+    public ChainService(NodeRepository nodes, NodeClaimRepository claims, NodeRules rules,
+            KindredProperties props, Clock clock) {
         this.nodes = nodes;
+        this.claims = claims;
         this.rules = rules;
         this.props = props;
         this.clock = clock;
@@ -92,11 +96,28 @@ public class ChainService {
         return all;
     }
 
+    /**
+     * Open slots for every node in the chain. A slot is used by a claim (even an unfinished one) or
+     * by a child that already exists, the same rule the map pins and the claim endpoint use.
+     */
     private Map<Long, Integer> openSlots(List<KindnessNode> all) {
+        // Children per node: we already have the whole chain in memory, so just count parentIds.
         Map<Long, Long> childCounts = new HashMap<>();
         all.stream().filter(n -> n.getParentId() != null).forEach(n -> childCounts.merge(n.getParentId(), 1L, Long::sum));
+
+        // Claims per node: one query for the whole chain (nodes with no claims are missing from the map).
+        List<Long> ids = all.stream().map(KindnessNode::getId).toList();
+        Map<Long, Long> claimCounts = claims.countClaims(ids).stream()
+                .collect(Collectors.toMap(NodeClaimRepository.ClaimCount::getNodeId,
+                        NodeClaimRepository.ClaimCount::getCount));
+
+        // The 7-day hard stop. `all` is ordered by createdAt, so the first node is the root.
+        Instant chainEnd = rules.chainEndsAt(all.getFirst());
+
         Instant now = clock.instant();
         return all.stream().collect(Collectors.toMap(KindnessNode::getId,
-                n -> rules.openSlots(n, childCounts.getOrDefault(n.getId(), 0L), now)));
+                n -> rules.openSlots(rules.usedSlots(
+                        claimCounts.getOrDefault(n.getId(), 0L),
+                        childCounts.getOrDefault(n.getId(), 0L)), now, chainEnd)));
     }
 }

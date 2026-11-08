@@ -1,6 +1,9 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { API_URL } from '@/api/config';
+
+import { demoLogoFor } from './demoLogos';
 import { OUTLINE, palette } from './theme';
 
 // A small business on the map: a permanent cream bubble with its logo, growing with visitors.
@@ -17,13 +20,20 @@ export function bubbleSize(diameterUnits: number): number {
   return Math.round(30 + (units - 1) * 3.8);
 }
 
+/** Backend logo (absolute, or a path like "/logos/x.png" served by the API), else the demo logo. */
+export function logoSource(name: string, logoUrl?: string | null): number | { uri: string } | undefined {
+  if (logoUrl) return { uri: logoUrl.startsWith('/') ? `${API_URL}${logoUrl}` : logoUrl };
+  return demoLogoFor(name);
+}
+
 export function BusinessBubble({ name, logoUrl, diameterUnits }: { name: string; logoUrl?: string | null; diameterUnits: number }) {
   const size = bubbleSize(diameterUnits);
-  const logo = Math.round(size * 0.62);
+  const source = logoSource(name, logoUrl);
+  const inner = size - 8;
   return (
     <View style={[styles.bubble, { width: size, height: size, borderRadius: size / 2 }]}>
-      {logoUrl ? (
-        <Image source={{ uri: logoUrl }} style={{ width: logo, height: logo, borderRadius: logo / 2 }} contentFit="cover" />
+      {source ? (
+        <Image source={source} style={{ width: inner, height: inner, borderRadius: inner / 2 }} contentFit="cover" />
       ) : (
         <Text style={[styles.initial, { fontSize: Math.max(12, size * 0.38) }]}>{name.charAt(0).toUpperCase()}</Text>
       )}

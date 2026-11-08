@@ -3,6 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { BusinessBubble } from './BusinessBubble';
+import { BusinessSheet } from './BusinessSheet';
 import { edges, type GraphNode } from './graph';
 import { NodeDetailModal } from './NodeDetailModal';
 import { NodeDot } from './NodeDot';
@@ -18,6 +19,10 @@ export type BusinessPin = {
   logoUrl?: string | null;
   /** From the backend's bubble growth (BusinessBubbleSize.java); 1 = smallest. */
   diameterUnits?: number;
+  /** Shown in the business panel when present. */
+  visitors?: number;
+  kindnessActs?: number;
+  paidForwardCents?: number;
 };
 
 export type ChainMapProps = {
@@ -30,6 +35,7 @@ export type ChainMapProps = {
   businesses?: BusinessPin[];
   /** Screen handles taps itself (e.g. navigates). If omitted, the map opens the act's card. */
   onNodePress?: (id: number) => void;
+  /** Screen handles business taps itself. If omitted, the map opens the business panel. */
   onBusinessPress?: (id: number) => void;
   /** Force the act card on or off; by default it shows only when onNodePress isn't given. */
   showDetails?: boolean;
@@ -75,6 +81,7 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
   const youId = useMemo(() => youMarker(nodes), [nodes]);
   const ready = useRef(false);
   const [open, setOpen] = useState<{ id: number; accent: string } | null>(null);
+  const [openBusiness, setOpenBusiness] = useState<BusinessPin | null>(null);
   const detailsOn = showDetails ?? !onNodePress;
   const initialRegion = useMemo(() => startRegion([...nodes, ...businesses]), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -122,7 +129,7 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
             coordinate={{ latitude: b.lat, longitude: b.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             title={b.name}
-            onPress={() => onBusinessPress?.(b.id)}
+            onPress={() => (onBusinessPress ? onBusinessPress(b.id) : setOpenBusiness(b))}
           >
             <BusinessBubble name={b.name} logoUrl={b.logoUrl} diameterUnits={b.diameterUnits ?? 1} />
           </Marker>
@@ -147,6 +154,7 @@ export function ChainMap({ nodes, businesses = [], onNodePress, onBusinessPress,
         })}
       </MapView>
       {detailsOn && <NodeDetailModal nodeId={open?.id ?? null} accent={open?.accent} onClose={() => setOpen(null)} />}
+      <BusinessSheet business={openBusiness} onClose={() => setOpenBusiness(null)} />
     </View>
   );
 }

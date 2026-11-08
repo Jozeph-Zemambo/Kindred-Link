@@ -34,7 +34,7 @@ public class BusinessController {
     @PostMapping("/{id}/checkin")
     @ResponseStatus(HttpStatus.CREATED)
     public CheckinResult checkin(@PathVariable Long id, @Valid @RequestBody CheckinRequest req,
-            @RequestHeader(DeviceId.HEADER) String deviceId) {
-        return service.checkin(id, req, deviceId);
+            @RequestHeader(value = DeviceId.HEADER, required = false) String deviceId) {
+        return service.checkin(id, req, DeviceId.require(deviceId));
     }
 }

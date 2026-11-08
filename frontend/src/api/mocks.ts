@@ -15,7 +15,8 @@ function tree(chainId: number, seeds: Seed[]): ChainTree {
     const children = seeds.filter((s) => s[1] === id).length;
     return {
       id, parentId, depth: d, lat, lng, createdAt: hoursAgo(hours),
-      openSlots: hours < 12 ? Math.max(0, 2 - children) : 0,
+      // Team rule: nodes don't expire from age, only after being claimed.
+      openSlots: Math.max(0, 2 - children),
       hasPhoto: false, mine, description,
     };
   });
@@ -137,15 +138,15 @@ function diameterUnits(visitors: number): number {
   return diameter + remaining / denominator;
 }
 
-const business = (id: number, name: string, lat: number, lng: number, visitors: number, kindnessActs: number): BusinessHub => ({
-  id, name, logoUrl: null, lat, lng, visitors, kindnessActs, diameterUnits: diameterUnits(visitors),
+const business = (id: number, name: string, lat: number, lng: number, visitors: number, kindnessActs: number, paidForwardCents: number): BusinessHub => ({
+  id, name, logoUrl: null, lat, lng, visitors, kindnessActs, diameterUnits: diameterUnits(visitors), paidForwardCents,
 });
 
 // Same names and spots as backend DemoData.java; visitor counts varied to show bubble growth.
 export const mockBusinesses: BusinessHub[] = [
-  business(1, 'Bean There Café', 51.0795, -114.1298, 2400, 310),
-  business(2, 'Corner Grocer', 51.0765, -114.1325, 320, 41),
-  business(3, 'Page Turner Books', 51.0812, -114.135, 40, 6),
+  business(1, 'Bean There Café', 51.0795, -114.1298, 2400, 310, 186_450),
+  business(2, 'Corner Grocer', 51.0765, -114.1325, 320, 41, 23_875),
+  business(3, 'Page Turner Books', 51.0812, -114.135, 40, 6, 3_200),
 ];
 
 const pick = (t: ChainTree, ids: number[]): ChainTree => ({ ...t, nodes: t.nodes.filter((n) => ids.includes(n.id)) });

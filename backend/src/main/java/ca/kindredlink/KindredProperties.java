@@ -12,11 +12,12 @@ public record KindredProperties(
         Business business,
         boolean seedDemoData) {
 
-    public record Node(int maxChildren, int openHours) {}
+    /** finishHours: how long a person has to post their act after claiming a slot. */
+    public record Node(int maxChildren, int finishHours) {}
 
     public record Continue(double maxDistanceMeters) {}
 
-    public record Chain(int quietAfterHours) {}
+    public record Chain(int quietAfterHours, int maxDays) {}
 
     public record Privacy(double gridMeters) {}
 
