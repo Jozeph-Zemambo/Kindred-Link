@@ -23,6 +23,8 @@ export type NodePin = {
   closesAt: string;
   hasPhoto: boolean;
   mine: boolean;
+  /** Requested from backend (not sent yet): lets the join map hide nodes that already have a child. */
+  childCount?: number;
 };
 
 export type NodeDetail = {
@@ -89,6 +91,8 @@ export type BusinessHub = {
   lng: number;
   visitors: number;
   kindnessActs: number;
+  /** Logical bubble diameter (BusinessBubbleSize.java). The map turns units into pixels. */
+  diameterUnits: number;
 };
 
 export type CheckinRequest = {
