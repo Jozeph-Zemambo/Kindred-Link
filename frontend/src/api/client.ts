@@ -8,9 +8,12 @@ import type {
   ChainTree,
   CheckinRequest,
   CheckinResult,
+  ClaimRequest,
+  ClaimResponse,
   CreateNodeRequest,
   NodeDetail,
   NodePin,
+  PhotoUploadResponse,
   Recap,
 } from './types';
 
@@ -56,6 +59,32 @@ export function listMine(): Promise<NodePin[]> {
 export function getNode(id: number): Promise<NodeDetail> {
   if (USE_MOCKS) return Promise.resolve(mockNode(id));
   return request(`/api/nodes/${id}`);
+}
+
+/** Uploads a local image to the moderated photo endpoint and returns its server id. */
+export async function uploadPhoto(uri: string): Promise<PhotoUploadResponse> {
+  if (USE_MOCKS) return { id: 1, status: 'PENDING' };
+  const form = new FormData();
+  form.append('file', { uri, name: `kindred-${Date.now()}.jpg`, type: 'image/jpeg' } as unknown as Blob);
+  const res = await fetch(`${API_URL}/api/photos`, {
+    method: 'POST',
+    headers: { 'X-Device-Id': await getDeviceId() },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError({ status: res.status, title: body?.title ?? res.statusText, detail: body?.detail });
+  }
+  return res.json() as Promise<PhotoUploadResponse>;
+}
+
+/** Claim a nearby node before the user can post the next act. */
+export function claimNode(nodeId: number, body: ClaimRequest): Promise<ClaimResponse> {
+  if (USE_MOCKS) {
+    const claimedAt = new Date().toISOString();
+    return Promise.resolve({ claimedAt, finishBy: new Date(Date.now() + 12 * 3_600_000).toISOString() });
+  }
+  return request(`/api/nodes/${nodeId}/claim`, post(body));
 }
 
 /** Start a brand-new chain at my current GPS fix. */

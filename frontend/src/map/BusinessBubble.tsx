@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { API_URL } from '@/api/config';
-
+import { assetUrl } from './assetUrl';
 import { demoLogoFor } from './demoLogos';
 import { OUTLINE, palette } from './theme';
 
@@ -22,7 +21,7 @@ export function bubbleSize(diameterUnits: number): number {
 
 /** Backend logo (absolute, or a path like "/logos/x.png" served by the API), else the demo logo. */
 export function logoSource(name: string, logoUrl?: string | null): number | { uri: string } | undefined {
-  if (logoUrl) return { uri: logoUrl.startsWith('/') ? `${API_URL}${logoUrl}` : logoUrl };
+  if (logoUrl) return { uri: assetUrl(logoUrl) };
   return demoLogoFor(name);
 }
 

@@ -9,6 +9,7 @@ import ca.kindredlink.geo.Geo;
 import ca.kindredlink.node.KindnessNode;
 import ca.kindredlink.node.NodeRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -38,7 +39,9 @@ public class BusinessService {
 
     public List<BusinessHub> list() {
         Map<Long, CheckinRepository.BusinessCounts> counts = counts();
-        return businesses.findAll().stream().map(b -> toHub(b, counts.get(b.getId()))).toList();
+        Instant now = clock.instant();
+        return businesses.findAll().stream()
+                .map(b -> toHub(b, counts.get(b.getId()), now)).toList();
     }
 
     /** Verify the till QR token and that the device is actually at the business, then record it. */
@@ -59,8 +62,9 @@ public class BusinessService {
                 throw new ApiException(HttpStatus.FORBIDDEN, "not_your_node", "You can only link your own act of kindness");
             }
         }
-        Checkin saved = checkins.save(new Checkin(businessId, deviceId, req.nodeId(), clock.instant()));
-        return new CheckinResult(saved.getId(), toHub(b, counts().get(businessId)));
+        Instant at = clock.instant();
+        Checkin saved = checkins.save(new Checkin(businessId, deviceId, req.nodeId(), at));
+        return new CheckinResult(saved.getId(), toHub(b, counts().get(businessId), at));
     }
 
     private Map<Long, CheckinRepository.BusinessCounts> counts() {
@@ -68,9 +72,11 @@ public class BusinessService {
                 .collect(Collectors.toMap(CheckinRepository.BusinessCounts::getBusinessId, Function.identity()));
     }
 
-    private static BusinessHub toHub(Business b, CheckinRepository.BusinessCounts c) {
+    private static BusinessHub toHub(Business b, CheckinRepository.BusinessCounts c, Instant now) {
         long visitors = c == null ? 0 : c.getVisitors();
+        Instant last = c == null ? null : c.getLastKindnessAt();
         return new BusinessHub(b.getId(), b.getName(), b.getLogoUrl(), b.getLat(), b.getLng(),
-                visitors, c == null ? 0 : c.getKindnessActs(), BusinessBubbleSize.diameterUnits(visitors));
+                visitors, c == null ? 0 : c.getKindnessActs(), BusinessBubbleSize.diameterUnits(visitors),
+                last, BusinessActivity.opacity(last, now));
     }
 }

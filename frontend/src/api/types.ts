@@ -6,11 +6,15 @@
 
 export type CreateNodeRequest = {
   description: string;
-  photoUrl?: string | null;
+  /** Id returned by POST /api/photos; photos are uploaded separately for moderation. */
+  photoId?: number | null;
   /** The device's real GPS fix; the server blurs it before anyone else sees it. */
   lat: number;
   lng: number;
 };
+
+export type PhotoStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type PhotoUploadResponse = { id: number; status: PhotoStatus };
 
 export type NodePin = {
   id: number;
@@ -122,12 +126,25 @@ export type CheckinResult = {
 
 // --- Proposed, not on the backend yet: GET /api/me/recap?week=YYYY-Www ---
 
+export type RecapMoment = {
+  id: number;
+  chainId: number;
+  description: string;
+  photoUrl: string | null;
+  createdAt: string;
+};
+
 export type Recap = {
   week: string;
   /** Up to 3 straight lines (root → leaf paths) through my nodes, longest first. */
   longestChains: ChainTree[];
   /** Up to 3 whole trees containing my nodes, biggest node count first. */
   largestNets: ChainTree[];
+  /** A small, curated set of moments downstream from the user's contribution in the featured ripple. */
+  moments?: RecapMoment[];
+  /** Counts across the whole period, not just the featured trees returned above. */
+  totalTrees?: number;
+  totalActs?: number;
 };
 
 /** Error body from the backend (Spring problem details), e.g. title "slot_closed" or "too_far". */
