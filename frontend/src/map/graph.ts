@@ -60,3 +60,31 @@ export function edges<T extends GraphNode>(nodes: T[]): Edge<T>[] {
     return parent ? [{ from: parent, to: n }] : [];
   });
 }
+
+/**
+ * Steps from startId to every other node, walking links both ways (up to parents and down to
+ * children). Used to draw a tree outward from one node.
+ */
+export function hopsFrom<T extends GraphNode>(nodes: T[], startId: number): Map<number, number> {
+  const ids = new Set(nodes.map((n) => n.id));
+  const neighbours = new Map<number, number[]>();
+  const link = (a: number, b: number) => neighbours.set(a, [...(neighbours.get(a) ?? []), b]);
+  for (const n of nodes) {
+    if (n.parentId !== null && ids.has(n.parentId)) {
+      link(n.id, n.parentId);
+      link(n.parentId, n.id);
+    }
+  }
+  const hops = new Map<number, number>([[startId, 0]]);
+  const queue = [startId];
+  while (queue.length) {
+    const id = queue.shift()!;
+    for (const next of neighbours.get(id) ?? []) {
+      if (!hops.has(next)) {
+        hops.set(next, hops.get(id)! + 1);
+        queue.push(next);
+      }
+    }
+  }
+  return hops;
+}

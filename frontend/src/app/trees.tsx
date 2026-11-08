@@ -16,6 +16,10 @@ export default function TreesScreen() {
   const { nodeId: nodeIdParam } = useLocalSearchParams<{ nodeId?: string }>();
   const claimedNodeId = Number(nodeIdParam);
   const [viewMode, setViewMode] = useState<'full' | 'fromMine'>('full');
+  // The tree draws itself in only when the screen opens (from the My tree tab). Once the person
+  // switches views, the map goes back to its usual zoom-to-fit.
+  const [switched, setSwitched] = useState(false);
+  const showView = (mode: 'full' | 'fromMine') => { if (mode === viewMode) return; setSwitched(true); setViewMode(mode); };
   const { data, error, loading, reload } = useLoad(async () => {
     const mine = await listMine();
     const claimed = Number.isFinite(claimedNodeId) && claimedNodeId > 0 ? await getNode(claimedNodeId) : null;
@@ -38,8 +42,8 @@ export default function TreesScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}><Text style={styles.eyebrow}>YOUR KINDNESS</Text><Text style={styles.title}>My tree</Text><Text style={styles.subtitle}>The tree you contributed to most recently.</Text></View>
       {loading || error ? <LoadState error={error} onRetry={reload} /> : !tree ? <LoadState empty="Your tree will appear after your first act of kindness." /> : <View style={styles.content}>
-        <View style={styles.toggle}><Pressable onPress={() => setViewMode('full')} style={[styles.toggleOption, viewMode === 'full' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'full' && styles.toggleSelectedText]}>Full tree</Text></Pressable><Pressable onPress={() => setViewMode('fromMine')} style={[styles.toggleOption, viewMode === 'fromMine' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'fromMine' && styles.toggleSelectedText]}>From my contribution</Text></Pressable></View>
-        <View style={styles.mapCard}><ChainMap nodes={viewNodes} /></View>
+        <View style={styles.toggle}><Pressable onPress={() => showView('full')} style={[styles.toggleOption, viewMode === 'full' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'full' && styles.toggleSelectedText]}>Full tree</Text></Pressable><Pressable onPress={() => showView('fromMine')} style={[styles.toggleOption, viewMode === 'fromMine' && styles.toggleSelected]}><Text style={[styles.toggleText, viewMode === 'fromMine' && styles.toggleSelectedText]}>From my contribution</Text></Pressable></View>
+        <View style={styles.mapCard}><ChainMap nodes={viewNodes} drawIn={!switched} /></View>
         <View style={styles.statsCard}><Text style={styles.statsTitle}>{viewMode === 'full' ? 'Your tree, still growing' : 'What grew from your contribution'}</Text><View style={styles.statsRow}><View><Text style={styles.statValue}>{viewNodes.length}</Text><Text style={styles.statLabel}>acts connected</Text></View><View><Text style={styles.statValue}>{depth}</Text><Text style={styles.statLabel}>steps deep</Text></View><View><Text style={styles.statValue}>{tree.status === 'ENDED' ? 'Complete' : 'Growing'}</Text><Text style={styles.statLabel}>current status</Text></View></View></View>
       </View>}
     </SafeAreaView>
