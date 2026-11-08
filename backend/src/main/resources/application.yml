@@ -41,4 +41,9 @@ kindred:
     grid-meters: 250
   business:
     max-checkin-distance-meters: 150
+  geocoding:
+    # Public Nominatim demo lookup: <=1 req/s enforced in-process, 24 h memory cache.
+    # Demo only - multiple backend instances must coordinate rate or use a provider.
+    base-url: ${GEOCODING_BASE_URL:https://nominatim.openstreetmap.org}
+    user-agent: ${GEOCODING_USER_AGENT:KindredLink-Demo/1.0 (+https://github.com/Jozeph-Zemambo/Kindred-Link)}
   seed-demo-data: true
