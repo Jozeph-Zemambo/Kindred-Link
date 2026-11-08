@@ -12,7 +12,7 @@ import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
 import { BottomNav } from '@/components/BottomNav';
-import { getMyLocation, JoinMap } from '@/map';
+import { getMyLocation, JoinMap, requireMyLocation } from '@/map';
 
 const ACTIVE_CLAIM_KEY = '@kindred-link/active-claim';
 type ActiveClaim = { nodeId: number; finishBy: string };
@@ -85,14 +85,15 @@ export default function ExploreScreen() {
     return { mode: 'explore' as const, me, pins };
   }, [claimLoaded, logMode, startMode, claimedNodeId]);
   useEffect(() => {
-    if (data?.mode === 'log' && !mapLocation) setMapLocation(data.me);
+    // Only a new tree can be placed on the map; continuing always uses GPS (the backend checks distance).
+    if (data?.mode === 'start' && !mapLocation) setMapLocation(data.me);
   }, [data, mapLocation]);
   async function submitKindness() {
     if (!description.trim() || !data || (data.mode !== 'log' && data.mode !== 'start')) return;
     setSubmitting(true);
     try {
-      const location = locationMode === 'current'
-        ? await getMyLocation()
+      const location = data.mode === 'log' || locationMode === 'current'
+        ? await requireMyLocation()
         : mapLocation;
       if (!location) return;
       const uploadedPhoto = photoUri ? await uploadPhoto(photoUri) : null;
@@ -127,7 +128,7 @@ export default function ExploreScreen() {
   async function handleClaim(pin: NodePin) {
     setClaiming(true);
     try {
-      const location = await getMyLocation();
+      const location = await requireMyLocation();
       const result = await claimNode(pin.id, { lat: location.lat, lng: location.lng });
       const nextClaim = { nodeId: pin.id, finishBy: result.finishBy };
       await AsyncStorage.setItem(ACTIVE_CLAIM_KEY, JSON.stringify(nextClaim));
@@ -157,8 +158,8 @@ export default function ExploreScreen() {
           {data.mode === 'log' ? <View style={styles.claimedCard}><Text style={styles.claimedEyebrow}>CONTINUING FROM</Text><Text style={styles.claimedText}>{data.claimed.description || 'Your claimed kindness node'}</Text><Text style={styles.claimedHint}>Complete within {activeClaim ? formatTimeLeft(activeClaim.finishBy, now) : '12 hours'} to keep your claim active.</Text></View> : <View style={styles.startCard}><Text style={styles.claimedEyebrow}>A NEW RIPPLE</Text><Text style={styles.claimedText}>Your kindness can start somewhere new.</Text><Text style={styles.claimedHint}>This act will become the root of a new tree.</Text></View>}
           <Text style={styles.fieldLabel}>What did you do?</Text><TextInput value={description} onChangeText={setDescription} placeholder="Share the kind deed" placeholderTextColor="#9AA0B1" multiline style={[styles.input, styles.descriptionInput]} />
           <Text style={styles.fieldLabel}>Add a photo <Text style={styles.optionalText}>optional</Text></Text><View style={styles.photoActions}><Pressable onPress={() => addPhoto('camera')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Take photo</Text></Pressable><Pressable onPress={() => addPhoto('library')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Choose image</Text></Pressable></View>{photoUri && <View style={styles.photoPreviewWrap}><Image source={{ uri: photoUri }} style={styles.photoPreview} /><Pressable onPress={() => setPhotoUri(null)} style={styles.removePhoto}><Text style={styles.removePhotoText}>Remove</Text></Pressable></View>}
-          <Text style={styles.fieldLabel}>Where did it happen?</Text><View style={styles.locationToggle}><Pressable onPress={() => setLocationMode('current')} style={[styles.locationOption, locationMode === 'current' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'current' && styles.locationSelectedText]}>Use current location</Text></Pressable><Pressable onPress={() => setLocationMode('map')} style={[styles.locationOption, locationMode === 'map' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'map' && styles.locationSelectedText]}>Choose on map</Text></Pressable></View>
-          {locationMode === 'current' ? <Text style={styles.locationHint}>Your GPS location will be used when you submit.</Text> : <View style={styles.pickerMap}><MapView style={StyleSheet.absoluteFill} initialRegion={{ latitude: data.me.lat, longitude: data.me.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }} showsUserLocation><Marker coordinate={{ latitude: (mapLocation ?? data.me).lat, longitude: (mapLocation ?? data.me).lng }} draggable onDragEnd={(event) => setMapLocation({ lat: event.nativeEvent.coordinate.latitude, lng: event.nativeEvent.coordinate.longitude })} /></MapView><View style={styles.mapPickerHint}><Text style={styles.mapPickerHintText}>Drag the pin to where it happened</Text></View></View>}
+          {data.mode === 'log' ? <><Text style={styles.fieldLabel}>Where did it happen?</Text><Text style={styles.locationHint}>Your GPS location will be used. You need to be within 2 km of the act you're continuing.</Text></> : <><Text style={styles.fieldLabel}>Where did it happen?</Text><View style={styles.locationToggle}><Pressable onPress={() => setLocationMode('current')} style={[styles.locationOption, locationMode === 'current' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'current' && styles.locationSelectedText]}>Use current location</Text></Pressable><Pressable onPress={() => setLocationMode('map')} style={[styles.locationOption, locationMode === 'map' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'map' && styles.locationSelectedText]}>Choose on map</Text></Pressable></View>
+          {locationMode === 'current' ? <Text style={styles.locationHint}>Your GPS location will be used when you submit.</Text> : <View style={styles.pickerMap}><MapView style={StyleSheet.absoluteFill} initialRegion={{ latitude: data.me.lat, longitude: data.me.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }} showsUserLocation><Marker coordinate={{ latitude: (mapLocation ?? data.me).lat, longitude: (mapLocation ?? data.me).lng }} draggable onDragEnd={(event) => setMapLocation({ lat: event.nativeEvent.coordinate.latitude, lng: event.nativeEvent.coordinate.longitude })} /></MapView><View style={styles.mapPickerHint}><Text style={styles.mapPickerHintText}>Drag the pin to where it happened</Text></View></View>}</>}
           <Pressable onPress={submitKindness} disabled={submitting || !description.trim()} style={[styles.submitButton, (submitting || !description.trim()) && styles.submitDisabled]}><Text style={styles.submitText}>{submitting ? 'Saving…' : startMode ? 'Start tree' : 'Log kindness'}</Text></Pressable>
         </ScrollView>
       ) : loading || !claimLoaded || error || !data ? (
