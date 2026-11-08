@@ -149,4 +149,22 @@ class NodeClaimTest {
         assertEquals(1, pin.childCount());
         assertEquals(0, pin.openSlots());
     }
+
+    @Autowired
+    NodeRepository nodes; // lets the test save nodes directly, skipping the claim step
+
+    @Test
+    void nodeWithTwoChildrenButNoClaimsIsFull() {
+        NodeDetail parent = newParent();
+
+        // Save 2 children straight into the database with no claims, like the demo seed data does.
+        // (KindnessNode args: chainId, parentId, depth, device, text, photo, lat, lng, approxLat, approxLng, time)
+        for (String device : new String[] {"seed-1", "seed-2"}) {
+            nodes.save(new KindnessNode(parent.chainId(), parent.id(), 1, device, "Seeded child", null,
+                    LAT, LNG, LAT, LNG, clock.instant()));
+        }
+
+        // The window is still open, but both slots are used by real children, so a claim must fail.
+        assertEquals("slot_closed", claimError(parent.id(), nearby(), "device-b"));
+    }
 }

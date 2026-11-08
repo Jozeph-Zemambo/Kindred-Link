@@ -114,7 +114,10 @@ public class NodeService {
         // free. countByNodeId counts every claim ever made, finished or not, which is what makes
         // an abandoned slot stay closed.
         boolean windowClosed = !now.isBefore(rules.closesAt(parent));
-        boolean noSlotsLeft = claims.countByNodeId(parentId) >= props.node().maxChildren();
+        // A slot is used if someone claimed it OR a child already exists (demo data has children but
+        // no claims). usedSlots() is the same helper the map pins use, so the pin and this rule agree.
+        long used = usedSlots(claims.countByNodeId(parentId), nodes.countByParentId(parentId));
+        boolean noSlotsLeft = used >= props.node().maxChildren();
         if (windowClosed || noSlotsLeft) {
             throw new ApiException(HttpStatus.CONFLICT, "slot_closed",
                     "No slots left, or the " + props.node().openHours() + " h claim window has closed");
