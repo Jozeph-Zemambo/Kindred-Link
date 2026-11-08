@@ -9,11 +9,16 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,12 +34,25 @@ class GoogleVisionSafetyCheckerTest {
     private RestClient.Builder builder;
     private MockRestServiceServer server;
     private GoogleVisionSafetyChecker checker;
+    private ListAppender<ILoggingEvent> logs;
 
     @BeforeEach
     void setup() {
         builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         checker = new GoogleVisionSafetyChecker(new VisionModerationProperties("vision-test-key"), builder.build());
+        logs = new ListAppender<>();
+        logs.start();
+        ((Logger) LoggerFactory.getLogger(GoogleVisionSafetyChecker.class)).addAppender(logs);
+    }
+
+    @AfterEach
+    void detachLogs() {
+        ((Logger) LoggerFactory.getLogger(GoogleVisionSafetyChecker.class)).detachAppender(logs);
+    }
+
+    private String warnings() {
+        return logs.list.stream().map(e -> e.getFormattedMessage()).reduce("", (a, b) -> a + "\n" + b);
     }
 
     private void expectCall(String responseBody) {
@@ -62,6 +80,13 @@ class GoogleVisionSafetyCheckerTest {
 
         assertTrue(checker.isSafe(IMAGE));
         server.verify();
+    }
+
+    @Test
+    void fullGoogleShapeApproves() {
+        // The real SafeSearch response carries five categories, not just the three we read.
+        expectCall("{\"responses\":[{\"safeSearchAnnotation\":{\"adult\":\"VERY_UNLIKELY\",\"spoof\":\"VERY_UNLIKELY\",\"medical\":\"VERY_UNLIKELY\",\"violence\":\"VERY_UNLIKELY\",\"racy\":\"VERY_UNLIKELY\"}}]}");
+        assertTrue(checker.isSafe(IMAGE));
     }
 
     @Test
@@ -128,6 +153,86 @@ class GoogleVisionSafetyCheckerTest {
         assertFalse(checker.isSafe(IMAGE)); // 429
         assertFalse(checker.isSafe(IMAGE)); // 500
         assertFalse(checker.isSafe(IMAGE)); // transport timeout
+    }
+
+    @Test
+    void unknownExtraFieldsAreTolerated() {
+        // Extra provider fields anywhere (annotation, error, top level) must not break the decision.
+        expectCall("{\"responses\":[{\"safeSearchAnnotation\":{\"adult\":\"VERY_UNLIKELY\",\"violence\":\"VERY_UNLIKELY\",\"racy\":\"VERY_UNLIKELY\",\"future\":{\"nested\":[1,2]}},\"futureTop\":42}]}");
+        // An error still loses to nothing, no matter what else the result carries.
+        expectCall("{\"responses\":[{\"error\":{\"code\":3,\"message\":\"bad\",\"status\":\"INVALID_ARGUMENT\",\"details\":[{\"@type\":\"x\",\"reason\":\"NOT_LISTED\",\"metadata\":{\"a\":1}}],\"extra\":true}}]}");
+        assertTrue(checker.isSafe(IMAGE));
+        assertFalse(checker.isSafe(IMAGE));
+    }
+
+    @Test
+    void httpErrorLogsStatusAndAllowlistedReasonOnly() {
+        String hostile = "key=fakekey123 img=" + IMAGE_B64;
+        server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\":{\"code\":403,\"message\":\"referrer blocked " + hostile + "\",\"status\":\"PERMISSION_DENIED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"API_KEY_SERVICE_BLOCKED\",\"domain\":\"googleapis.com\",\"metadata\":{\"service\":\"vision.googleapis.com\"}}]}}"));
+
+        assertFalse(checker.isSafe(IMAGE));
+
+        String msg = warnings();
+        assertTrue(msg.contains("HTTP 403"), msg);
+        assertTrue(msg.contains("reason=API_KEY_SERVICE_BLOCKED"), msg);
+        assertFalse(msg.contains("fakekey123"), msg);
+        assertFalse(msg.contains(IMAGE_B64), msg);
+        assertFalse(msg.contains("referrer blocked"), msg);
+    }
+
+    @Test
+    void unrecognizedReasonLogsUnknownNotTheText() {
+        server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\":{\"code\":403,\"message\":\"x\",\"status\":\"PERMISSION_DENIED\",\"details\":[{\"reason\":\"EVIL\\ninjection fakekey123\"}]}}"));
+
+        assertFalse(checker.isSafe(IMAGE));
+
+        String msg = warnings();
+        assertTrue(msg.contains("reason=UNKNOWN"), msg);
+        assertFalse(msg.contains("EVIL"), msg);
+        assertFalse(msg.contains("fakekey123"), msg);
+    }
+
+    @Test
+    void malformedErrorBodyStillLogsStatusAndUnknown() {
+        server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("not json at all {key=fakekey123"));
+
+        assertFalse(checker.isSafe(IMAGE));
+
+        String msg = warnings();
+        assertTrue(msg.contains("HTTP 500"), msg);
+        assertTrue(msg.contains("reason=UNKNOWN"), msg);
+        assertFalse(msg.contains("fakekey123"), msg);
+    }
+
+    @Test
+    void timeoutLogsNetworkCategoryNotDetails() {
+        server.expect(requestTo(ENDPOINT)).andRespond(req -> {
+            throw new SocketTimeoutException("simulated read timeout fakekey123");
+        });
+
+        assertFalse(checker.isSafe(IMAGE));
+
+        String msg = warnings();
+        assertTrue(msg.contains("NETWORK_OR_TIMEOUT"), msg);
+        assertFalse(msg.contains("fakekey123"), msg);
+        assertFalse(msg.contains("SocketTimeout"), msg);
+    }
+
+    @Test
+    void malformedSuccessBodyLogsClientErrorCategory() {
+        expectCall("this is not json {key=fakekey123}");
+
+        assertFalse(checker.isSafe(IMAGE));
+
+        String msg = warnings();
+        assertTrue(msg.contains("RESPONSE_OR_CLIENT_ERROR"), msg);
+        assertFalse(msg.contains("fakekey123"), msg);
     }
 
     @Test

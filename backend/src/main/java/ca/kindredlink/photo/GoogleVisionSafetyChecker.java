@@ -1,14 +1,18 @@
 package ca.kindredlink.photo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * One synchronous SafeSearch call per upload (bounded ~8s worst case; acceptable for the demo -
@@ -64,11 +68,43 @@ public class GoogleVisionSafetyChecker implements PhotoSafetyChecker {
                     .retrieve()
                     .body(AnnotateResponse.class);
             return decide(body);
+        } catch (RestClientResponseException e) {
+            // HTTP error: only the numeric status and an allowlisted provider reason are safe to log.
+            log.warn("Photo safety screening failed (HTTP {}, reason={}); leaving the photo pending for manual review",
+                    e.getStatusCode().value(), reason(e));
+            return false;
+        } catch (ResourceAccessException e) {
+            log.warn("Photo safety screening failed ({}); leaving the photo pending for manual review", "NETWORK_OR_TIMEOUT");
+            return false;
         } catch (Exception e) {
-            // Deliberately generic: no exception text, response body, key or image bytes.
-            log.warn("Photo safety screening failed; leaving the photo pending for manual review");
+            log.warn("Photo safety screening failed ({}); leaving the photo pending for manual review", "RESPONSE_OR_CLIENT_ERROR");
             return false;
         }
+    }
+
+    // Google's ErrorInfo reasons that are safe to surface - no message text, so nothing a caller
+    // or provider can smuggle into our logs. Anything else collapses to UNKNOWN.
+    private static final Set<String> SAFE_REASONS = Set.of(
+            "API_KEY_INVALID", "API_KEY_SERVICE_BLOCKED", "API_KEY_HTTP_REFERRER_BLOCKED",
+            "API_KEY_IP_ADDRESS_BLOCKED", "API_KEY_ANDROID_APP_BLOCKED", "API_KEY_IOS_APP_BLOCKED",
+            "SERVICE_DISABLED", "BILLING_DISABLED", "RATE_LIMIT_EXCEEDED", "QUOTA_EXCEEDED");
+
+    private static String reason(RestClientResponseException e) {
+        try {
+            ErrorEnvelope envelope = e.getResponseBodyAs(ErrorEnvelope.class);
+            ErrorDetail error = envelope == null ? null : envelope.error();
+            if (error == null || error.details() == null) {
+                return "UNKNOWN";
+            }
+            for (ErrorDetailItem detail : error.details()) {
+                if (detail != null && detail.reason() != null && SAFE_REASONS.contains(detail.reason())) {
+                    return detail.reason();
+                }
+            }
+        } catch (Exception ignored) {
+            // An unreadable body is still no reason to leak it - UNKNOWN is the safe label.
+        }
+        return "UNKNOWN";
     }
 
     /** True only for a single clean result the policy approves; anything unexpected is unsafe. */
@@ -109,4 +145,15 @@ public class GoogleVisionSafetyChecker implements PhotoSafetyChecker {
     private record SafeSearchAnnotation(String adult, String violence, String racy) {}
 
     private record ErrorInfo(Integer code, String message) {}
+
+    // ---- error envelope shape: {"error":{"code":403,"status":"...","details":[{"reason":"..."}]}} ----
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ErrorEnvelope(ErrorDetail error) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ErrorDetail(Integer code, String status, List<ErrorDetailItem> details) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ErrorDetailItem(String reason) {}
 }

@@ -76,6 +76,12 @@ endpoint before they reach the manual queue.
   photos are untouched.
 - With no key set, nothing changes: no requests are made and every photo
   stays in the manual queue.
+- On failure the backend logs a sanitized warning only:
+  `HTTP <status>, reason=<allowlisted Google ErrorInfo reason or UNKNOWN>`
+  (e.g. `API_KEY_SERVICE_BLOCKED`, `SERVICE_DISABLED`,
+  `RATE_LIMIT_EXCEEDED`), `NETWORK_OR_TIMEOUT`, or
+  `RESPONSE_OR_CLIENT_ERROR`. Keys, response bodies and image bytes are
+  never logged - check that warning first when uploads stay pending.
 
 ## 3. After deploy
 
