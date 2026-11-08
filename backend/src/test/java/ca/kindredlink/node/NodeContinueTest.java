@@ -44,4 +44,19 @@ class NodeContinueTest {
 
         assertEquals("too_far", error.getBody().getTitle());
     }
+
+    @Test
+    void thirdChildIsRejectedBecauseNodeIsFull() {
+        NodeDetail parent = service.createRoot(request("Shovelled a walk", 51.0500, -114.0700), "device-a");
+
+        // Two different people continue it, both close by
+        service.continueChain(parent.id(), request("First link", 51.0501, -114.0701), "device-b");
+        service.continueChain(parent.id(), request("Second link", 51.0502, -114.0702), "device-c");
+
+        // A third person, also close by, should be turned away
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.continueChain(parent.id(), request("Third link", 51.0503, -114.0703), "device-d"));
+
+        assertEquals("slot_closed", error.getBody().getTitle());
+    }
 }
