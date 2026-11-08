@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ca.kindredlink.common.ApiException;
+import ca.kindredlink.node.NodeDtos.ClaimRequest;
 import ca.kindredlink.node.NodeDtos.CreateNodeRequest;
 import ca.kindredlink.node.NodeDtos.NodeDetail;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+/** Tests posting your act (continue) now that you have to claim a slot first. */
 @SpringBootTest
 @ActiveProfiles("test")
 class NodeContinueTest {
@@ -22,11 +24,18 @@ class NodeContinueTest {
         return new CreateNodeRequest(description, null, lat, lng);
     }
 
+    /** Runs a post that should fail and returns its error code. */
+    private String postError(Long parentId, CreateNodeRequest req, String deviceId) {
+        ApiException error = assertThrows(ApiException.class, () -> service.continueChain(parentId, req, deviceId));
+        return error.getBody().getTitle();
+    }
+
     @Test
-    void continueFromNearbySucceeds() {
+    void claimThenPostFromNearbySucceeds() {
         NodeDetail parent = service.createRoot(request("Paid for a coffee", 51.0500, -114.0700), "device-a");
 
-        // ~25 m away, different person
+        // device-b reserves a slot, standing ~25 m away, then posts their act
+        service.claim(parent.id(), new ClaimRequest(51.0502, -114.0702), "device-b");
         NodeDetail child = service.continueChain(parent.id(), request("Held a door", 51.0502, -114.0702), "device-b");
 
         assertEquals(parent.id(), child.parentId());
@@ -35,28 +44,29 @@ class NodeContinueTest {
     }
 
     @Test
-    void continueFromFarAwayIsRejected() {
-        NodeDetail parent = service.createRoot(request("Returned a wallet", 51.0500, -114.0700), "device-a");
+    void postingWithoutClaimingIsRejected() {
+        NodeDetail parent = service.createRoot(request("Left a note", 51.0500, -114.0700), "device-a");
 
-        // ~17 km away, much farther than the 1000 m limit
-        ApiException error = assertThrows(ApiException.class,
-                () -> service.continueChain(parent.id(), request("Too far", 51.2000, -114.0700), "device-b"));
-
-        assertEquals("too_far", error.getBody().getTitle());
+        // device-b is nearby but never claimed a slot
+        assertEquals("no_claim", postError(parent.id(), request("Skipped the claim", 51.0501, -114.0701), "device-b"));
     }
 
     @Test
-    void thirdChildIsRejectedBecauseNodeIsFull() {
+    void postingFromFarAwayIsRejectedEvenWithAClaim() {
+        NodeDetail parent = service.createRoot(request("Returned a wallet", 51.0500, -114.0700), "device-a");
+        service.claim(parent.id(), new ClaimRequest(51.0502, -114.0702), "device-b");
+
+        // device-b claimed while nearby, but tries to post from ~17 km away
+        assertEquals("too_far", postError(parent.id(), request("Too far", 51.2000, -114.0700), "device-b"));
+    }
+
+    @Test
+    void postingTwiceOnOneClaimIsRejected() {
         NodeDetail parent = service.createRoot(request("Shovelled a walk", 51.0500, -114.0700), "device-a");
+        service.claim(parent.id(), new ClaimRequest(51.0501, -114.0701), "device-b");
+        service.continueChain(parent.id(), request("First post", 51.0501, -114.0701), "device-b");
 
-        // Two different people continue it, both close by
-        service.continueChain(parent.id(), request("First link", 51.0501, -114.0701), "device-b");
-        service.continueChain(parent.id(), request("Second link", 51.0502, -114.0702), "device-c");
-
-        // A third person, also close by, should be turned away
-        ApiException error = assertThrows(ApiException.class,
-                () -> service.continueChain(parent.id(), request("Third link", 51.0503, -114.0703), "device-d"));
-
-        assertEquals("slot_closed", error.getBody().getTitle());
+        // One claim means one post
+        assertEquals("already_claimed", postError(parent.id(), request("Second post", 51.0501, -114.0701), "device-b"));
     }
 }

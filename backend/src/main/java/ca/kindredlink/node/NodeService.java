@@ -126,30 +126,46 @@ public class NodeService {
     }
 
     /**
-     * Add the next link under parentId. Rules, in order: the parent must have an open slot, you
-     * can't continue your own node, and your real GPS fix must be near the parent's real location.
+     * Post your act as the next link under parentId. You have to claim a slot first (see claim),
+     * and then finish inside your own 12 hours.
      */
     @Transactional
     public NodeDetail continueChain(Long parentId, CreateNodeRequest req, String deviceId) {
+        // Grab the parent and lock it, so two requests can't trip over each other.
         KindnessNode parent = nodes.findByIdForUpdate(parentId)
                 .orElseThrow(() -> ApiException.notFound("Node", parentId));
+        Instant now = clock.instant();
 
-        long children = nodes.countByParentId(parentId);
-        if (rules.openSlots(parent, children, clock.instant()) == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "slot_closed",
-                    "This node is full or its " + props.node().openHours() + " h window has closed");
+        // Did this person actually claim a slot? If not, they can't post yet.
+        NodeClaim claim = claims.findByNodeIdAndDeviceId(parentId, deviceId)
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "no_claim",
+                        "Claim this node first, then post your act"));
+
+        // They already posted for this claim, so no second post.
+        if (claim.getChildId() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "already_claimed",
+                    "You already finished your act for this node");
         }
-        if (parent.getAuthorDeviceId().equals(deviceId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "own_node", "You can't continue your own act of kindness");
+
+        // Their personal 12 hours start the moment they claimed. Too late means the slot is lost for good.
+        Instant deadline = claim.getClaimedAt().plus(Duration.ofHours(props.node().openHours()));
+        if (!now.isBefore(deadline)) {
+            throw new ApiException(HttpStatus.CONFLICT, "claim_expired",
+                    "Your " + props.node().openHours() + " h to finish ran out, so this slot is closed");
         }
+
+        // Still be near the node when you post, not just when you claimed.
         double distance = Geo.distanceMeters(parent.getLat(), parent.getLng(), req.lat(), req.lng());
         double max = props.continueRules().maxDistanceMeters();
         if (distance > max) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "too_far",
-                    "You need to be within " + (int) max + " m of this node to continue it");
+                    "You need to be within " + (int) max + " m of this node to post");
         }
 
+        // All good: save the new node, then note on the claim that it's finished.
+        // (No explicit save for the claim: the transaction writes the change when the method ends.)
         KindnessNode child = nodes.save(newNode(parent.getChainId(), parent.getId(), parent.getDepth() + 1, req, deviceId));
+        claim.setChildId(child.getId());
         return toDetail(child, deviceId);
     }
 
