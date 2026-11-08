@@ -10,6 +10,7 @@ public record KindredProperties(
         Chain chain,
         Privacy privacy,
         Business business,
+        Moderation moderation,
         boolean seedDemoData) {
 
     /** finishHours: how long a person has to post their act after claiming a slot. */
@@ -22,4 +23,7 @@ public record KindredProperties(
     public record Privacy(double gridMeters) {}
 
     public record Business(double maxCheckinDistanceMeters) {}
+
+    /** adminKey: the secret a moderator sends in the X-Admin-Key header. Empty = moderation is switched off. */
+    public record Moderation(String adminKey) {}
 }

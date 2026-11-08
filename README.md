@@ -89,6 +89,10 @@ Scan the QR with Expo Go. From a phone, call the API at `http://<laptop-LAN-IP>:
 | GET | /api/chains/{id}/stats | Chain statistics |
 | GET | /api/businesses | Business hubs |
 | POST | /api/businesses/{id}/checkin | Verified QR participation |
+| POST | /api/photos | Upload a photo (multipart, part named `file`); returns `{id, status: "PENDING"}` |
+| GET | /api/photos/{id} | The picture (JPEG). Public once approved; pending or rejected photos answer `not_found` |
+| GET | /api/photos/pending | Moderator only (`X-Admin-Key`): photos waiting for a decision |
+| POST | /api/photos/{id}/approve, /reject | Moderator only (`X-Admin-Key`) |
 
 Send an `X-Device-Id` header (any random string per install) on writes; there are no accounts yet.
 Game rules (2 slots, 12 h to finish after claiming, 7-day chain limit, distances, privacy grid) are in `backend/src/main/resources/application.yml`.
@@ -125,6 +129,23 @@ Error codes (the `title` field of the error JSON):
 | `too_far` | Claim or continue: you're too far from the node |
 | `no_claim` | Continue: claim this node first |
 | `claim_expired` | Continue: your 12 h to finish ran out, and the slot is gone |
+| `bad_photo` | Upload: the file isn't a readable picture, is empty, or is over 25 megapixels |
+| `not_your_photo` | Create / continue: the `photoId` was uploaded by a different device |
+| `photo_used` | Create / continue: that photo is already attached to a node |
+| `not_moderator` | Moderation endpoints: missing or wrong `X-Admin-Key` (or moderation is switched off) |
+
+## Photos
+
+After writing a good deed, a user can take a photo of it. It is optional.
+
+1. **Upload:** `POST /api/photos` (multipart/form-data, part `file`, header `X-Device-Id`). The phone should compress first; the server also strips hidden data (GPS, camera info), shrinks the picture to 1600 px and re-saves it as a plain JPEG. Max 5 MB. The answer is `{id, status: "PENDING"}`.
+2. **Attach:** send that `id` as `photoId` in the body of `POST /api/nodes` or `POST /api/nodes/{id}/continue`. There is no free-text photo link any more. You can only attach a photo you uploaded, and a photo can be used once.
+3. **Moderation:** every photo is hidden until a moderator approves it. Moderators send the secret in the `X-Admin-Key` header (set on the server with the `MODERATOR_KEY` environment variable; if it is empty, moderation is off and nothing can be approved).
+4. **Who sees it:** everyone, on every map (including the one where you browse for nodes to join), but only once a moderator has approved it.
+   - `photoUrl` on `GET /api/nodes/{id}` is a path like `/api/photos/12` (put the API address in front), or `null` while the photo is pending or rejected.
+   - `hasPhoto` on map pins and chain nodes is `true` only for nodes with an approved photo.
+   - Fetch the picture with `GET /api/photos/{id}`. It is a plain image link, so no special headers are needed. Pending and rejected photos answer `not_found`.
+   - The uploader's phone can show its own local copy while the photo waits for approval.
 
 ## Business Bubble Growth
 

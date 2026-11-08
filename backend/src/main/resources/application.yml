@@ -50,4 +50,9 @@ kindred:
     grid-meters: 250
   business:
     max-checkin-distance-meters: 150
+  moderation:
+    # Secret key moderators send in the X-Admin-Key header to see pending photos and approve or reject
+    # them. Empty means moderation is switched off, so nobody can approve anything. Turn it on by
+    # setting the MODERATOR_KEY environment variable (never commit a real key).
+    admin-key: ${MODERATOR_KEY:}
   seed-demo-data: true
