@@ -13,6 +13,11 @@ spring:
       # Not a substitute for managed migrations (e.g. Flyway) in production.
       ddl-auto: update
     open-in-view: false
+  servlet:
+    multipart:
+      # Photo upload size limit. The phone compresses first, so 5 MB is generous.
+      max-file-size: 5MB
+      max-request-size: 6MB
   mvc:
     # Errors come back as {"status":409,"title":"slot_closed","detail":"..."} (see ApiException).
     problemdetails:
