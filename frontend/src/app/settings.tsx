@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth0 } from 'react-native-auth0';
 
 import { listMine } from '@/api/client';
 import { API_URL, USE_MOCKS } from '@/api/config';
