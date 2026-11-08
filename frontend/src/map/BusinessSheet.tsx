@@ -44,7 +44,6 @@ export function BusinessSheet({ business, onClose }: { business: BusinessPin | n
               )}
             </View>
             <Text style={styles.name}>{business.name}</Text>
-            {business.demoTotals && <Text style={styles.demoTag}>Demo totals</Text>}
           </View>
 
           <View style={styles.stats}>
@@ -94,7 +93,6 @@ const styles = StyleSheet.create({
   logo: { width: 104, height: 104, borderRadius: 52 },
   initial: { color: palette.navy, fontSize: 44, fontWeight: '800' },
   name: { color: palette.navy, fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  demoTag: { color: palette.muted, fontSize: 12, fontWeight: '700' },
   stats: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: OUTLINE },
   statValue: { color: palette.navy, fontSize: 24, fontWeight: '800' },

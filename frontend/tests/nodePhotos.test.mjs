@@ -170,13 +170,14 @@ test('JoinSheet: stale load from the previous pin shows no photo or old text', (
   assert.ok(!text.includes('No photo available'), 'still loading: no premature placeholder');
 });
 
-test('JoinSheet: no public photo shows the safe placeholder', () => {
+test('JoinSheet: no public photo shows no photo frame at all', () => {
   const ctx = makeCtx();
   ctx.loadData.set(7, { data: { node: node(7, null, 'Kind act'), before: [] } });
   const tree = renderSheet(ctx, pin(7));
 
   assert.equal(images(tree).length, 0);
-  assert.ok(allText(tree).includes('No photo available'));
+  assert.ok(!allText(tree).includes('No photo available'), 'no empty placeholder box above the act');
+  assert.ok(allText(tree).includes('Kind act'));
   assert.ok(!allText(tree).includes('No photo uploaded'));
 });
 
