@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import MapView, { Circle, Marker } from 'react-native-maps';
 
+import { USE_MOCKS } from '@/api/config';
 import type { NodePin } from '@/api/types';
 
 import { BusinessBubble } from './BusinessBubble';
@@ -16,13 +17,14 @@ import { BASE_MAP, palette, RADIUS_FILL, RADIUS_STROKE } from './theme';
 
 // The "find a node to join" map: only findable nodes, all the same colour, the 3 most popular
 // pulsing. Tapping one slides in the join panel. Businesses stay on the map as bubbles.
+// Nodes outside the radius still show: walk toward one and the radius (it follows you) reaches it.
 
 export type LatLngPoint = { lat: number; lng: number };
 
 export type JoinMapProps = {
   /** Raw pins from listNearby; this component applies the findable rule itself. */
   pins: NodePin[];
-  /** Where the user is. The join radius is drawn around this point. */
+  /** Where the user is when the screen loads. The join radius starts here, then follows the live GPS. */
   me: LatLngPoint;
   radiusMeters?: number;
   businesses?: BusinessPin[];
@@ -38,6 +40,9 @@ export type JoinMapProps = {
 export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [], onJoin, onPinPress, onBusinessPress, style }: JoinMapProps) {
   const [selected, setSelected] = useState<NodePin | null>(null);
   const [openBusiness, setOpenBusiness] = useState<BusinessPin | null>(null);
+  // Mock data lives at UCalgary, so in mock mode keep the radius there instead of the simulator's GPS.
+  const [live, setLive] = useState<LatLngPoint | null>(null);
+  const centre = USE_MOCKS ? me : live ?? me;
   const findable = useMemo(() => pins.filter((p) => isFindable(p)), [pins]);
   const popular = useMemo(() => mostPopular(findable), [findable]);
 
@@ -46,9 +51,18 @@ export function JoinMap({ pins, me, radiusMeters = JOIN_RADIUS_M, businesses = [
 
   return (
     <View style={[styles.map, style]}>
-      <MapView style={StyleSheet.absoluteFill} initialRegion={region} showsUserLocation {...BASE_MAP}>
+      <MapView
+        style={StyleSheet.absoluteFill}
+        initialRegion={region}
+        showsUserLocation
+        onUserLocationChange={(e) => {
+          const c = e.nativeEvent.coordinate;
+          if (c) setLive({ lat: c.latitude, lng: c.longitude });
+        }}
+        {...BASE_MAP}
+      >
         <Circle
-          center={{ latitude: me.lat, longitude: me.lng }}
+          center={{ latitude: centre.lat, longitude: centre.lng }}
           radius={radiusMeters}
           strokeColor={RADIUS_STROKE}
           strokeWidth={2}
