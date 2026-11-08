@@ -4,6 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getNode } from '@/api/client';
 import { useLoad } from '@/api/useLoad';
 
+import { assetUrl } from './assetUrl';
 import { mix, OUTLINE, palette, textOn } from './theme';
 
 // Chain / tree views: a friendly card for one act when its node is tapped, tinted with that
@@ -36,7 +37,7 @@ export function NodeDetailModal({ nodeId, accent = palette.blue, onClose }: Node
         <Pressable style={[styles.card, { backgroundColor: cardTint }]} onPress={() => {}}>
           <View style={[styles.photoFrame, { backgroundColor: accent }]}>
             {node?.photoUrl ? (
-              <Image source={{ uri: node.photoUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+              <Image source={{ uri: assetUrl(node.photoUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
             ) : (
               <View style={styles.placeholder}>
                 <Text style={[styles.placeholderMark, { color: onAccent }]}>✦</Text>

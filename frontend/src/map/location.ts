@@ -15,3 +15,15 @@ export async function getMyLocation(): Promise<MyLocation> {
   const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   return { lat: pos.coords.latitude, lng: pos.coords.longitude, real: true };
 }
+
+/**
+ * For joining a node and posting an act: a real GPS fix only. The backend checks distance against
+ * what we send, so the campus fallback would let anyone who denies location join campus nodes.
+ */
+export async function requireMyLocation(): Promise<MyLocation> {
+  const me = await getMyLocation();
+  if (!me.real && !USE_MOCKS) {
+    throw new Error('Turn on location for Kindred Link in Settings. You can only join or continue an act when you are near it.');
+  }
+  return me;
+}
