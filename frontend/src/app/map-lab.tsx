@@ -18,6 +18,7 @@ type LabView = (typeof VIEWS)[number];
 export default function MapLab() {
   const [view, setView] = useState<LabView>('Join');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [joinedId, setJoinedId] = useState<number | null>(null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,7 +31,13 @@ export default function MapLab() {
         ))}
       </View>
       {view === 'Join' && (
-        <JoinMap pins={mockPins(false)} me={ICT} selectedId={selectedId} onPinPress={(p) => setSelectedId(p.id)} />
+        <JoinMap
+          pins={mockPins(false)}
+          me={ICT}
+          businesses={mockBusinesses}
+          onPinPress={(p) => setSelectedId(p.id)}
+          onJoin={(p) => setJoinedId(p.id)}
+        />
       )}
       {view === 'Mine' && (
         <MyKindnessMap tree={mockNet} latestNodeId={3} businesses={mockBusinesses} onNodePress={setSelectedId} />
@@ -38,7 +45,9 @@ export default function MapLab() {
       {view === 'Chain' && <FullChainMap tree={mockNet} nodeId={5} onNodePress={setSelectedId} />}
       {view === 'Recap line' && <RecapChainMap chain={mockRecap.longestChains[0]} onNodePress={setSelectedId} />}
       {view === 'Recap net' && <RecapNetMap net={mockRecap.largestNets[0]} onNodePress={setSelectedId} />}
-      <Text style={styles.status}>Tapped node: {selectedId ?? 'none'}</Text>
+      <Text style={styles.status}>
+        Tapped node: {selectedId ?? 'none'} · Joined: {joinedId ?? 'none'}
+      </Text>
     </SafeAreaView>
   );
 }

@@ -10,7 +10,7 @@ import { descendants, lineage } from './graph';
 // (JoinMap, the "find a node to join" view, lives in JoinMap.tsx.)
 
 type TapProps = {
-  /** Called with the tapped node's id. What happens next is the screen's call. */
+  /** Called with the tapped node's id. The map opens the act's detail card itself. */
   onNodePress?: (id: number) => void;
   style?: StyleProp<ViewStyle>;
 };
