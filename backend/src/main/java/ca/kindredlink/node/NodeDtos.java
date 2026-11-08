@@ -35,7 +35,19 @@ public final class NodeDtos {
      */
     public record ClaimResponse(Instant claimedAt, Instant finishBy) {}
 
-    /** A public map pin. Only approximate coordinates. */
+    /**
+     * A public map pin: the small summary of a node that the map gets from GET /api/nodes, one per
+     * dot on the map. Tapping a pin opens the full NodeDetail. Only approximate coordinates are
+     * shown, never the real location.
+     *
+     * Two fields are easy to mix up:
+     *  - openSlots: how many slots can still be CLAIMED (2 minus claims taken; 0 once the 12 h
+     *    claim window is over).
+     *  - childCount: how many children actually POSTED their act (a claim that isn't finished yet
+     *    doesn't count). A node has at most 2 children.
+     * Example: two people claimed, one posted, one is still working on it. openSlots = 0 (both
+     * slots taken) but childCount = 1 (only one has posted).
+     */
     public record NodePin(
             Long id,
             Long chainId,
@@ -47,7 +59,7 @@ public final class NodeDtos {
             Instant closesAt,
             boolean hasPhoto,
             boolean mine,
-            int childCount) {} // children who actually posted (not just claimed)
+            int childCount) {} // children who actually posted (max 2), not people who only claimed
 
     public record NodeDetail(
             Long id,
