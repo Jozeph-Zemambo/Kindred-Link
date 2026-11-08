@@ -7,7 +7,7 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
 
-import { claimNode, continueNode, getNode, listNearby, uploadPhoto } from '@/api/client';
+import { claimNode, continueNode, createNode, getNode, listNearby, uploadPhoto } from '@/api/client';
 import type { NodePin } from '@/api/types';
 import { useLoad } from '@/api/useLoad';
 import { LoadState } from '@/components/LoadState';
@@ -45,6 +45,7 @@ function formatTimeLeft(timestamp: string, now: number) {
 export default function ExploreScreen() {
   const { mode, nodeId: nodeIdParam } = useLocalSearchParams<{ mode?: string; nodeId?: string }>();
   const routeLogMode = mode === 'log';
+  const routeStartMode = mode === 'start';
   const routeNodeId = Number(nodeIdParam);
   const [storedClaim, setStoredClaim] = useState<ActiveClaim | null>(null);
   const [claimLoaded, setClaimLoaded] = useState(false);
@@ -68,6 +69,7 @@ export default function ExploreScreen() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const activeClaim = storedClaim && Date.parse(storedClaim.finishBy) > now ? storedClaim : null;
   const logMode = routeLogMode || Boolean(activeClaim);
+  const startMode = routeStartMode && !logMode;
   const claimedNodeId = routeLogMode ? routeNodeId : activeClaim?.nodeId ?? NaN;
   const { data, error, loading, reload } = useLoad(async () => {
     if (!claimLoaded) return null;
@@ -75,15 +77,18 @@ export default function ExploreScreen() {
       const [claimed, me] = await Promise.all([getNode(claimedNodeId), getMyLocation()]);
       return { mode: 'log' as const, claimed, me };
     }
+    if (startMode) {
+      return { mode: 'start' as const, me: await getMyLocation() };
+    }
     const me = await getMyLocation();
     const pins = await listNearby(me.lat, me.lng);
     return { mode: 'explore' as const, me, pins };
-  }, [claimLoaded, logMode, claimedNodeId]);
+  }, [claimLoaded, logMode, startMode, claimedNodeId]);
   useEffect(() => {
     if (data?.mode === 'log' && !mapLocation) setMapLocation(data.me);
   }, [data, mapLocation]);
   async function submitKindness() {
-    if (!description.trim() || !data || data.mode !== 'log') return;
+    if (!description.trim() || !data || (data.mode !== 'log' && data.mode !== 'start')) return;
     setSubmitting(true);
     try {
       const location = locationMode === 'current'
@@ -91,10 +96,15 @@ export default function ExploreScreen() {
         : mapLocation;
       if (!location) return;
       const uploadedPhoto = photoUri ? await uploadPhoto(photoUri) : null;
-      await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
-      await AsyncStorage.removeItem(ACTIVE_CLAIM_KEY);
-      setStoredClaim(null);
-      Alert.alert('Kindness logged', 'Your act has been added to the tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(claimedNodeId) } }) }]);
+      if (data.mode === 'log') {
+        await continueNode(claimedNodeId, { description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
+        await AsyncStorage.removeItem(ACTIVE_CLAIM_KEY);
+        setStoredClaim(null);
+        Alert.alert('Kindness logged', 'Your act has been added to the tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(claimedNodeId) } }) }]);
+      } else {
+        const created = await createNode({ description: description.trim(), lat: location.lat, lng: location.lng, photoId: uploadedPhoto?.id ?? null });
+        Alert.alert('Tree started', 'Your first act is now the beginning of a new tree.', [{ text: 'View my tree', onPress: () => router.replace({ pathname: '/trees', params: { nodeId: String(created.id) } }) }]);
+      }
     } catch (submitError) {
       Alert.alert('Could not log kindness', submitError instanceof Error ? submitError.message : 'Please try again.');
     } finally {
@@ -135,21 +145,21 @@ export default function ExploreScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>EXPLORE KINDNESS</Text>
-          <Text style={styles.title}>{logMode ? 'Log your kindness' : 'Find a tree to grow'}</Text>
-          <Text style={styles.subtitle}>{logMode ? 'Capture what you did and where it happened.' : 'Find a nearby act to continue. See My tree for your current tree and status.'}</Text>
+          <Text style={styles.title}>{logMode ? 'Log your kindness' : startMode ? 'Start a new tree' : 'Find a tree to grow'}</Text>
+          <Text style={styles.subtitle}>{logMode ? 'Capture what you did and where it happened.' : startMode ? 'Begin a new ripple with a kind act of your own.' : 'Find a nearby act to continue. See My tree for your current tree and status.'}</Text>
         </View>
       </View>
 
       <View style={styles.periodCard}><View><Text style={styles.periodTitle}>Current kindness period</Text><Text style={styles.periodSubtitle}>Ends {period.end.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text></View><Text style={styles.periodRemaining}>{formatTimeLeft(period.end.toISOString(), now)}</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${period.progress * 100}%` }]} /></View></View>
 
-      {logMode && data?.mode === 'log' ? (
+      {(logMode && data?.mode === 'log') || (startMode && data?.mode === 'start') ? (
         <ScrollView style={styles.logContent} contentContainerStyle={styles.logContentInner} keyboardShouldPersistTaps="handled">
-          <View style={styles.claimedCard}><Text style={styles.claimedEyebrow}>CONTINUING FROM</Text><Text style={styles.claimedText}>{data.claimed.description || 'Your claimed kindness node'}</Text><Text style={styles.claimedHint}>Complete within {activeClaim ? formatTimeLeft(activeClaim.finishBy, now) : '12 hours'} to keep your claim active.</Text></View>
+          {data.mode === 'log' ? <View style={styles.claimedCard}><Text style={styles.claimedEyebrow}>CONTINUING FROM</Text><Text style={styles.claimedText}>{data.claimed.description || 'Your claimed kindness node'}</Text><Text style={styles.claimedHint}>Complete within {activeClaim ? formatTimeLeft(activeClaim.finishBy, now) : '12 hours'} to keep your claim active.</Text></View> : <View style={styles.startCard}><Text style={styles.claimedEyebrow}>A NEW RIPPLE</Text><Text style={styles.claimedText}>Your kindness can start somewhere new.</Text><Text style={styles.claimedHint}>This act will become the root of a new tree.</Text></View>}
           <Text style={styles.fieldLabel}>What did you do?</Text><TextInput value={description} onChangeText={setDescription} placeholder="Share the kind deed" placeholderTextColor="#9AA0B1" multiline style={[styles.input, styles.descriptionInput]} />
           <Text style={styles.fieldLabel}>Add a photo <Text style={styles.optionalText}>optional</Text></Text><View style={styles.photoActions}><Pressable onPress={() => addPhoto('camera')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Take photo</Text></Pressable><Pressable onPress={() => addPhoto('library')} disabled={photoBusy} style={styles.photoButton}><Text style={styles.photoButtonText}>Choose image</Text></Pressable></View>{photoUri && <View style={styles.photoPreviewWrap}><Image source={{ uri: photoUri }} style={styles.photoPreview} /><Pressable onPress={() => setPhotoUri(null)} style={styles.removePhoto}><Text style={styles.removePhotoText}>Remove</Text></Pressable></View>}
           <Text style={styles.fieldLabel}>Where did it happen?</Text><View style={styles.locationToggle}><Pressable onPress={() => setLocationMode('current')} style={[styles.locationOption, locationMode === 'current' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'current' && styles.locationSelectedText]}>Use current location</Text></Pressable><Pressable onPress={() => setLocationMode('map')} style={[styles.locationOption, locationMode === 'map' && styles.locationSelected]}><Text style={[styles.locationText, locationMode === 'map' && styles.locationSelectedText]}>Choose on map</Text></Pressable></View>
           {locationMode === 'current' ? <Text style={styles.locationHint}>Your GPS location will be used when you submit.</Text> : <View style={styles.pickerMap}><MapView style={StyleSheet.absoluteFill} initialRegion={{ latitude: data.me.lat, longitude: data.me.lng, latitudeDelta: 0.012, longitudeDelta: 0.012 }} showsUserLocation><Marker coordinate={{ latitude: (mapLocation ?? data.me).lat, longitude: (mapLocation ?? data.me).lng }} draggable onDragEnd={(event) => setMapLocation({ lat: event.nativeEvent.coordinate.latitude, lng: event.nativeEvent.coordinate.longitude })} /></MapView><View style={styles.mapPickerHint}><Text style={styles.mapPickerHintText}>Drag the pin to where it happened</Text></View></View>}
-          <Pressable onPress={submitKindness} disabled={submitting || !description.trim()} style={[styles.submitButton, (submitting || !description.trim()) && styles.submitDisabled]}><Text style={styles.submitText}>{submitting ? 'Saving…' : 'Log kindness'}</Text></Pressable>
+          <Pressable onPress={submitKindness} disabled={submitting || !description.trim()} style={[styles.submitButton, (submitting || !description.trim()) && styles.submitDisabled]}><Text style={styles.submitText}>{submitting ? 'Saving…' : startMode ? 'Start tree' : 'Log kindness'}</Text></Pressable>
         </ScrollView>
       ) : loading || !claimLoaded || error || !data ? (
         <LoadState error={error} onRetry={reload} />
@@ -160,6 +170,7 @@ export default function ExploreScreen() {
           {claiming && <View style={styles.claimingOverlay}><Text style={styles.claimingText}>Claiming node…</Text></View>}
         </View>
       ) : <LoadState empty="This kindness node is no longer available." />}
+      {!logMode && !startMode && data?.mode === 'explore' && <Pressable style={styles.newTreeButton} onPress={() => router.replace({ pathname: '/explore', params: { mode: 'start' } })}><Text style={styles.newTreeButtonText}>Start a new tree instead</Text></Pressable>}
       <BottomNav active="explore" />
     </SafeAreaView>
   );
@@ -188,6 +199,7 @@ const styles = StyleSheet.create({
   logContent: { flex: 1 },
   logContentInner: { paddingBottom: 12 },
   claimedCard: { backgroundColor: '#80B9E5', borderRadius: 20, padding: 17, marginBottom: 18 },
+  startCard: { backgroundColor: '#FFD36D', borderRadius: 20, padding: 17, marginBottom: 18 },
   claimedEyebrow: { color: '#303A59', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
   claimedText: { color: '#303A59', fontSize: 18, lineHeight: 24, fontWeight: '800', marginTop: 8 },
   claimedHint: { color: '#303A59', opacity: 0.7, fontSize: 12, marginTop: 8 },
@@ -214,4 +226,6 @@ const styles = StyleSheet.create({
   submitButton: { alignItems: 'center', backgroundColor: '#F49A68', borderRadius: 15, paddingVertical: 14, marginTop: 4 },
   submitDisabled: { opacity: 0.45 },
   submitText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  newTreeButton: { alignItems: 'center', backgroundColor: '#FFD36D', borderRadius: 15, paddingVertical: 13, marginTop: 12 },
+  newTreeButtonText: { color: '#303A59', fontSize: 12, fontWeight: '900' },
 });
