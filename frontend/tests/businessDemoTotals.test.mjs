@@ -79,12 +79,12 @@ const sheetStubs = {
   './theme': { palette: { cream: '#FFF9E9', yellow: '#FFD36D', blue: '#80B9E5', navy: '#303A59', muted: '#6C748A' }, OUTLINE: '#1C2030' },
 };
 
-test('BusinessSheet: demo business shows exact totals + Demo totals label', () => {
+test('BusinessSheet: demo business shows exact totals, without a Demo totals label', () => {
   const { BusinessSheet } = loadTs(SHEET, sheetStubs);
   const demo = applyBusinessDemoTotals(CINNZEO);
   const text = allText(BusinessSheet({ business: demo, onClose() {} }));
   assert.ok(text.includes('Cinnzeo Bakery Cafe'));
-  assert.ok(text.includes('Demo totals'), 'label must disclose the demo figures');
+  assert.ok(!text.includes('Demo totals'), 'label removed for the live demo (figures stay)');
   assert.ok(text.includes('312'), 'exact visitor figure, not rounded');
   assert.ok(text.includes('2,500'), 'exact acts figure with thousands separator');
   assert.ok(!text.includes('300+') && !text.includes('2,400+'), 'no roundedPlus for demo totals');

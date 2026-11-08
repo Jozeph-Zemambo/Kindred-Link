@@ -39,7 +39,7 @@ export async function measureBusinessBubbleScale(map: Pick<MapView, 'getCamera' 
  * Bubbles follow the zoom only within this range. Uncapped, a close-up camera (zoom ~17) made a
  * nearby logo several times its normal size and swallow the map.
  */
-export const MIN_BUBBLE_SCALE = 0.25;
+export const MIN_BUBBLE_SCALE = 0.4;
 export const MAX_BUBBLE_SCALE = 0.6;
 
 export function clampBubbleScale(scale: number): number {

@@ -65,7 +65,8 @@ export function JoinSheet({ pin, onClose, onJoin }: JoinSheetProps) {
     >
       {pin && (
         <ScrollView contentContainerStyle={styles.body}>
-          <PhotoFrame photoUrl={current?.node.photoUrl} colour={palette.blue} loading={loading || !current} />
+          {/* Only acts with an approved photo get the frame; an empty "No photo" box just pushed the act down. */}
+          {current?.node.photoUrl ? <PhotoFrame photoUrl={current.node.photoUrl} colour={palette.blue} loading={false} /> : null}
           <Text style={styles.title}>{current?.node.description ?? ' '}</Text>
           <View style={styles.pills}>
             <Text style={[styles.pill, { backgroundColor: palette.blue }]}>{actsInLineLabel(pin.depth)}</Text>
