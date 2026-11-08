@@ -4,6 +4,9 @@
 /** kindred.node.max-children */
 export const MAX_CHILDREN = 2;
 
+/** kindred.node.open-hours: how long a node accepts children after it's created. */
+export const OPEN_HOURS = 12;
+
 /** kindred.continue-rules.max-distance-meters: how close you must be to join a node. */
 export const JOIN_RADIUS_M = 2000;
 

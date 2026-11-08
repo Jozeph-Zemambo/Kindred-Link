@@ -8,6 +8,10 @@ export type GraphNode = {
   mine?: boolean;
   openSlots?: number;
   description?: string;
+  /** ISO time the act was logged. */
+  createdAt?: string;
+  /** Acts before this one in its chain (0 = started it). */
+  depth?: number;
 };
 
 export type Edge<T extends GraphNode> = { from: T; to: T };

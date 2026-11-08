@@ -42,10 +42,42 @@ export const mockLine = tree(10, [
   [14, 11, 51.0842, -114.1349, 22, false, 'Shared an umbrella at the bus stop'],
 ]);
 
-const allNodes = [...mockNet.nodes.map((n) => ({ n, chainId: 1 })), ...mockLine.nodes.map((n) => ({ n, chainId: 10 }))];
+const ACTS = [
+  'Paid for a stranger’s coffee', 'Helped carry groceries up the stairs', 'Left a thank-you note for the bus driver',
+  'Shovelled the sidewalk for the whole block', 'Gave directions and walked them there', 'Donated warm socks to the shelter',
+  'Fixed a flat bike tire for a classmate', 'Bought a meal for someone who needed one', 'Returned a lost phone',
+  'Tutored a friend before their exam', 'Picked up litter along the path', 'Shared an umbrella in the rain',
+];
+
+/** A straight line of `count` acts from `start`, one every `stepHours`, the newest `endHours` ago. */
+function line(chainId: number, start: [number, number], step: [number, number], count: number, endHours: number, stepHours: number): ChainTree {
+  return tree(
+    chainId,
+    Array.from({ length: count }, (_, i): Seed => [
+      chainId + i,
+      i === 0 ? null : chainId + i - 1,
+      start[0] + step[0] * i,
+      start[1] + step[1] * i,
+      endHours + (count - 1 - i) * stepHours,
+      false,
+      ACTS[(chainId + i) % ACTS.length],
+    ]),
+  );
+}
+
+/** Other open lines around campus so the find view has popular and quiet nodes to compare. */
+const nearbyLines = [
+  line(100, [51.089, -114.142], [0.0007, 0.0012], 12, 1.5, 0.9),
+  line(200, [51.07, -114.145], [0.0006, 0.0009], 7, 2, 1),
+  line(300, [51.083, -114.118], [-0.0008, 0.0004], 4, 1, 1.2),
+  line(400, [51.0745, -114.1385], [0, 0], 1, 0.5, 0),
+];
+
+const allTrees = [mockNet, mockLine, ...nearbyLines];
+const allNodes = allTrees.flatMap((t) => t.nodes.map((n) => ({ n, chainId: t.chainId })));
 
 export function mockChain(chainId: number): ChainTree {
-  return chainId === 10 ? mockLine : mockNet;
+  return allTrees.find((t) => t.chainId === chainId) ?? mockNet;
 }
 
 export function mockPins(onlyMine: boolean): NodePin[] {
@@ -56,16 +88,24 @@ export function mockPins(onlyMine: boolean): NodePin[] {
       createdAt: n.createdAt, closesAt: new Date(Date.parse(n.createdAt) + 12 * 3_600_000).toISOString(),
       hasPhoto: n.hasPhoto, mine: n.mine,
       childCount: allNodes.filter(({ n: c }) => c.parentId === n.id).length,
+      depth: n.depth,
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
+
+/** A few acts with photos (placeholder images, mixed shapes) to exercise the 4:3 crop. */
+const MOCK_PHOTOS: Record<number, string> = {
+  5: 'https://picsum.photos/seed/kindred-lunch/900/1200',
+  7: 'https://picsum.photos/seed/kindred-gloves/1200/700',
+  111: 'https://picsum.photos/seed/kindred-snow/1000/1000',
+};
 
 export function mockNode(id: number): NodeDetail {
   const found = allNodes.find(({ n }) => n.id === id) ?? allNodes[0];
   const { n, chainId } = found;
   return {
     id: n.id, chainId, parentId: n.parentId, depth: n.depth, description: n.description ?? '',
-    photoUrl: null, lat: n.lat, lng: n.lng, openSlots: n.openSlots, createdAt: n.createdAt,
+    photoUrl: MOCK_PHOTOS[n.id] ?? null, lat: n.lat, lng: n.lng, openSlots: n.openSlots, createdAt: n.createdAt,
     closesAt: new Date(Date.parse(n.createdAt) + 12 * 3_600_000).toISOString(),
     childIds: allNodes.filter(({ n: c }) => c.parentId === n.id).map(({ n: c }) => c.id),
     mine: n.mine,
@@ -81,10 +121,31 @@ export function mockStats(chainId: number): ChainStats {
   };
 }
 
+/** Same formula as backend BusinessBubbleSize.java, so mock bubbles grow like real ones. */
+function diameterUnits(visitors: number): number {
+  if (visitors <= 500) return 1 + visitors / 100;
+  let remaining = visitors - 500;
+  let width = 500;
+  let denominator = 200;
+  let diameter = 6;
+  while (remaining > width) {
+    remaining -= width;
+    diameter += 2.5;
+    width *= 2;
+    denominator *= 2;
+  }
+  return diameter + remaining / denominator;
+}
+
+const business = (id: number, name: string, lat: number, lng: number, visitors: number, kindnessActs: number): BusinessHub => ({
+  id, name, logoUrl: null, lat, lng, visitors, kindnessActs, diameterUnits: diameterUnits(visitors),
+});
+
+// Same names and spots as backend DemoData.java; visitor counts varied to show bubble growth.
 export const mockBusinesses: BusinessHub[] = [
-  { id: 1, name: 'Bean There Café', logoUrl: null, lat: 51.0795, lng: -114.1298, visitors: 14, kindnessActs: 6, diameterUnits: 1.14 },
-  { id: 2, name: 'Corner Grocer', logoUrl: null, lat: 51.0765, lng: -114.1325, visitors: 9, kindnessActs: 2, diameterUnits: 1.09 },
-  { id: 3, name: 'Page Turner Books', logoUrl: null, lat: 51.0812, lng: -114.135, visitors: 5, kindnessActs: 1, diameterUnits: 1.05 },
+  business(1, 'Bean There Café', 51.0795, -114.1298, 2400, 310),
+  business(2, 'Corner Grocer', 51.0765, -114.1325, 320, 41),
+  business(3, 'Page Turner Books', 51.0812, -114.135, 40, 6),
 ];
 
 const pick = (t: ChainTree, ids: number[]): ChainTree => ({ ...t, nodes: t.nodes.filter((n) => ids.includes(n.id)) });

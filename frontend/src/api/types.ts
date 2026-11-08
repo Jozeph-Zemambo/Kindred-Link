@@ -25,6 +25,8 @@ export type NodePin = {
   mine: boolean;
   /** Requested from backend (not sent yet): lets the join map hide nodes that already have a child. */
   childCount?: number;
+  /** Requested from backend (not sent yet): acts before this one. Drives "10+ acts" and the popular ripple. */
+  depth?: number;
 };
 
 export type NodeDetail = {
