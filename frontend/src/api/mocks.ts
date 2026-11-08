@@ -55,6 +55,7 @@ export function mockPins(onlyMine: boolean): NodePin[] {
       id: n.id, chainId, parentId: n.parentId, lat: n.lat, lng: n.lng, openSlots: n.openSlots,
       createdAt: n.createdAt, closesAt: new Date(Date.parse(n.createdAt) + 12 * 3_600_000).toISOString(),
       hasPhoto: n.hasPhoto, mine: n.mine,
+      childCount: allNodes.filter(({ n: c }) => c.parentId === n.id).length,
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
@@ -81,9 +82,9 @@ export function mockStats(chainId: number): ChainStats {
 }
 
 export const mockBusinesses: BusinessHub[] = [
-  { id: 1, name: 'Bean There Café', logoUrl: null, lat: 51.0795, lng: -114.1298, visitors: 14, kindnessActs: 6 },
-  { id: 2, name: 'Corner Grocer', logoUrl: null, lat: 51.0765, lng: -114.1325, visitors: 9, kindnessActs: 2 },
-  { id: 3, name: 'Page Turner Books', logoUrl: null, lat: 51.0812, lng: -114.135, visitors: 5, kindnessActs: 1 },
+  { id: 1, name: 'Bean There Café', logoUrl: null, lat: 51.0795, lng: -114.1298, visitors: 14, kindnessActs: 6, diameterUnits: 1.14 },
+  { id: 2, name: 'Corner Grocer', logoUrl: null, lat: 51.0765, lng: -114.1325, visitors: 9, kindnessActs: 2, diameterUnits: 1.09 },
+  { id: 3, name: 'Page Turner Books', logoUrl: null, lat: 51.0812, lng: -114.135, visitors: 5, kindnessActs: 1, diameterUnits: 1.05 },
 ];
 
 const pick = (t: ChainTree, ids: number[]): ChainTree => ({ ...t, nodes: t.nodes.filter((n) => ids.includes(n.id)) });
