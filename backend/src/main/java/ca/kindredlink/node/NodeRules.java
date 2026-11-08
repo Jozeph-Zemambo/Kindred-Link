@@ -1,9 +1,11 @@
 package ca.kindredlink.node;
 
-import ca.kindredlink.KindredProperties;
 import java.time.Duration;
 import java.time.Instant;
+
 import org.springframework.stereotype.Component;
+
+import ca.kindredlink.KindredProperties;
 
 /**
  * The branching rule, in one place.

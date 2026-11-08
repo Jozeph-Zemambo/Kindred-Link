@@ -1,5 +1,15 @@
 package ca.kindredlink.business;
 
+import java.time.Clock;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import ca.kindredlink.KindredProperties;
 import ca.kindredlink.business.BusinessDtos.BusinessHub;
 import ca.kindredlink.business.BusinessDtos.CheckinRequest;
@@ -8,14 +18,6 @@ import ca.kindredlink.common.ApiException;
 import ca.kindredlink.geo.Geo;
 import ca.kindredlink.node.KindnessNode;
 import ca.kindredlink.node.NodeRepository;
-import java.time.Clock;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
